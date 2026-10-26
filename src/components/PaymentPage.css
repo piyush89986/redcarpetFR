@@ -1,0 +1,311 @@
+/* =========================================================
+   Red Carpet VIP Payment & Pass Confirmation Styles
+   ========================================================= */
+
+.rc-payment-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
+  padding: 32px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+.rc-payment-wrapper {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Header & Branding */
+.rc-payment-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rc-payment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 9999px;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 12px;
+}
+
+.rc-payment-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5);
+  animation: rcPulse 2s infinite;
+}
+
+@keyframes rcPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+.rc-payment-title {
+  font-size: 26px;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+  line-height: 1.25;
+}
+
+.rc-payment-sub {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+  max-width: 400px;
+}
+
+/* Stepper Indicator */
+.rc-payment-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.rc-pay-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.rc-pay-step-item.active {
+  color: #1d4ed8;
+}
+
+.rc-pay-step-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.25s ease;
+}
+
+.rc-pay-step-item.active .rc-pay-step-circle {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.rc-pay-step-line {
+  width: 32px;
+  height: 2px;
+  background: #e2e8f0;
+  transition: all 0.25s ease;
+}
+
+.rc-pay-step-line.active {
+  background: #2563eb;
+}
+
+/* Card Body */
+.rc-payment-card {
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  padding: 28px 24px;
+  box-shadow: 0 12px 28px -4px rgba(37, 99, 235, 0.08);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* Process Steps */
+.rc-process-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rc-step-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+
+.rc-step-card:hover {
+  background: #ffffff;
+  border-color: #bfdbfe;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.06);
+}
+
+.rc-step-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rc-step-card-content {
+  flex: 1;
+}
+
+.rc-step-card-content h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 3px 0;
+}
+
+.rc-step-card-content p {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.35;
+}
+
+/* Benefits Section ("What You Get") */
+.rc-benefits-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+.rc-benefits-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #166534;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rc-benefits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rc-benefit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #15803d;
+  font-weight: 500;
+}
+
+.rc-benefit-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* Pricing Section */
+.rc-price-card {
+  text-align: center;
+  padding: 18px;
+  background: #eff6ff;
+  border: 1px dashed #93c5fd;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.rc-price-amount {
+  font-size: 36px;
+  font-weight: 900;
+  color: #1d4ed8;
+  letter-spacing: -1px;
+  line-height: 1.1;
+}
+
+.rc-price-period {
+  font-size: 12px;
+  font-weight: 700;
+  color: #3b82f6;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.rc-price-hint {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* Actions & Footer */
+.rc-payment-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.rc-secure-note {
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+@media screen and (max-width: 480px) {
+  .rc-payment-card {
+    padding: 22px 16px;
+  }
+  .rc-payment-title {
+    font-size: 22px;
+  }
+  .rc-price-amount {
+    font-size: 32px;
+  }
+}

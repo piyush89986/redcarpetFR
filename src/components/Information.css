@@ -1,0 +1,362 @@
+/* =========================================================
+   Red Carpet VIP Cart Registration & Verification Styles
+   ========================================================= */
+
+.rc-info-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
+  padding: 32px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+.rc-info-wrapper {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Header & Branding */
+.rc-info-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rc-info-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 9999px;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 12px;
+}
+
+.rc-info-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5);
+  animation: rcPulse 2s infinite;
+}
+
+@keyframes rcPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+.rc-info-title {
+  font-size: 26px;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+  line-height: 1.25;
+}
+
+.rc-info-sub {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+  max-width: 400px;
+}
+
+/* Stepper Indicator */
+.rc-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.rc-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.rc-step-item.active {
+  color: #1d4ed8;
+}
+
+.rc-step-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.25s ease;
+}
+
+.rc-step-item.active .rc-step-circle {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.rc-step-line {
+  width: 40px;
+  height: 2px;
+  background: #e2e8f0;
+  transition: all 0.25s ease;
+}
+
+.rc-step-line.active {
+  background: #2563eb;
+}
+
+/* Card Body */
+.rc-info-card {
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  padding: 32px 28px;
+  box-shadow: 0 12px 28px -4px rgba(37, 99, 235, 0.08);
+  box-sizing: border-box;
+}
+
+.rc-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Input with icon styling */
+.rc-input-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rc-input-icon {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.rc-input-with-icon {
+  padding-left: 42px !important;
+}
+
+.rc-phone-prefix {
+  position: absolute;
+  left: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1d4ed8;
+  padding-right: 8px;
+  border-right: 1px solid #e2e8f0;
+  pointer-events: none;
+}
+
+.rc-input-phone {
+  padding-left: 54px !important;
+  letter-spacing: 1px;
+}
+
+/* Perks list */
+.rc-perks-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px 0 4px 0;
+}
+
+.rc-perk-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.3;
+}
+
+.rc-perk-icon {
+  font-size: 18px;
+}
+
+/* Alerts */
+.rc-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.rc-alert-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.rc-alert-success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+}
+
+/* Step 2: OTP Header & Field */
+.rc-otp-header {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.rc-otp-icon-bubble {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.rc-otp-header h3 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+}
+
+.rc-otp-header p {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.rc-otp-header p strong {
+  color: #1d4ed8;
+}
+
+.rc-otp-input-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+.rc-otp-field {
+  width: 100%;
+  max-width: 260px;
+  height: 58px;
+  background: #ffffff;
+  border: 2px solid #bfdbfe;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 12px;
+  color: #1d4ed8;
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.05);
+}
+
+.rc-otp-field:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+
+
+/* Secondary Actions */
+.rc-otp-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rc-text-btn {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.rc-text-btn:hover:not(:disabled) {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.rc-text-btn:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.rc-text-btn-secondary {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.rc-text-btn-secondary:hover {
+  color: #0f172a;
+}
+
+@media screen and (max-width: 480px) {
+  .rc-info-card {
+    padding: 24px 18px;
+  }
+  .rc-info-title {
+    font-size: 22px;
+  }
+  .rc-perks-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .rc-perk-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 8px 12px;
+  }
+}

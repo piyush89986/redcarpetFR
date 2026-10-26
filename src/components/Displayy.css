@@ -1,0 +1,113 @@
+*{
+    margin: 0;
+    padding: 0;
+}
+.animated-display{
+  height: 35vh;
+  /* background-color: red; */
+  width: 100%;
+  position: absolute;
+  padding-top: 25px;
+  top: 5px;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+}
+ .circle-container {
+    margin: 0;
+    padding: 0;
+    position: relative;
+    height: 35vh;
+    /* background-color: green; */
+    width: 85%;
+    border-top-right-radius: 150px;
+    border-bottom-right-radius: 150px;
+    overflow: hidden; /* Ensures text outside the circle is hidden */
+    background-image: url(https://cdn.pixabay.com/photo/2014/02/01/18/01/money-256319_960_720.jpg);
+    background-position: center;
+    background-size: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Wrapper to hold two texts */
+.slider-wrapper {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  animation: slide 30s linear infinite;
+}
+
+/* Sliding Text */
+.slider-text {
+  white-space: nowrap;
+  font-size: 250px;
+  font-weight: 900;
+  opacity: 50%;
+  line-height: 1;
+  background: linear-gradient(90deg, #f5f3f6, #3498db, #f1c40f, #e74c3c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  padding-right: 50px; /* Space between two texts */
+}
+
+/* Keyframes */
+@keyframes slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+
+.circle-container-text{
+  /* background-color: rgb(7, 7, 21); */
+  opacity: 80%;
+  position: absolute;
+  height: 100%;
+  width: 85%;
+  border-top-right-radius: 150px;
+  border-bottom-right-radius: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
+}
+.p{
+  /* background-color: green; */
+  padding: 5px;
+  width: 100%;
+  position: absolute;
+  font-weight: 600;    
+  height: 35vh;
+  color: white;
+  font-size: 300px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.royal-pass{
+    position: absolute;
+    bottom: 70px;
+    left: 70px;
+    padding: 0;
+    margin: 0;
+    font-size: 45px;
+  font-weight: 900;
+  background: linear-gradient(90deg, #f5f3f6, #3498db, #f1c40f );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  overflow: hidden;
+}
+@media screen and (max-width: 440px) {
+  .royal-pass{
+    font-size: 34px;
+    bottom: 66px;
+  }
+}
