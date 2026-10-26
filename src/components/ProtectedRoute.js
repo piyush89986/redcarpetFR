@@ -18,7 +18,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
       // Wrong role — redirect to their specific workspace
       const shopId = localStorage.getItem("shopId");
       if (cleanRole === "superadmin") {
-        return <Navigate to="/branddashboard" replace />;
+        return <Navigate to="/ownerdashboard" replace />;
       }
       if (cleanRole === "shop admin" || cleanRole === "shopadmin" || cleanRole === "shop") {
         return <Navigate to={`/${shopId}/counter`} replace />;

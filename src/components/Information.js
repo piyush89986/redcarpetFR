@@ -55,6 +55,11 @@ function Information() {
     const cleanMobile = mobile.trim().replace(/\D/g, "");
     const cleanEmail = email.trim();
 
+    if (mall?.subscriptionStatus === "inactive") {
+      setErrorMsg("Platform subscription for this location is paused. Please contact administration.");
+      return;
+    }
+
     if (!cleanName) {
       setErrorMsg("Please enter your full name.");
       return;
@@ -180,6 +185,17 @@ function Information() {
 
         {/* Form Card */}
         <div className="rc-info-card">
+          {mall?.subscriptionStatus === "inactive" && (
+            <div className="rc-alert rc-alert-error" style={{ marginBottom: "20px" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>Platform Subscription Notice: Service for this location is paused by platform administration.</span>
+            </div>
+          )}
+
           {errorMsg && (
             <div className="rc-alert rc-alert-error">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

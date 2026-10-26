@@ -29,6 +29,11 @@ function Explain() {
         <h1 className="explain-title">
           {mall?.title ? `Welcome to ${mall.title}` : "Welcome to Red Carpet VIP"}
         </h1>
+        {mall?.mallTitle && (
+          <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--rc-blue-700)", marginTop: "-4px", marginBottom: "12px" }}>
+            📍 {mall.mallTitle} Counter
+          </p>
+        )}
 
         <p className="explain-text">
           Enjoy an exclusive shopping journey designed for our privileged guests.

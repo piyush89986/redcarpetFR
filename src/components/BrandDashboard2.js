@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { QRCodeCanvas } from "qrcode.react";
@@ -7,7 +7,10 @@ import API_BASE from "../apiConfig";
 import "./common/common.css";
 
 const BrandDashboard2 = () => {
-  const { id } = useParams();
+  const { id: paramId } = useParams();
+  const storedShopId = localStorage.getItem("shopId");
+  const id = paramId || storedShopId;
+
   const [shop, setShop] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -21,14 +24,46 @@ const BrandDashboard2 = () => {
   const [isCopied, setIsCopied] = useState(false);
   const qrCanvasRef = useRef(null);
 
-  useEffect(() => {
-    setIsLoading(true);
-    axios
-      .get(`${API_BASE}/api/shops/${id}`)
-      .then((res) => setShop(res.data))
-      .catch((err) => console.error(err))
-      .finally(() => setIsLoading(false));
+  // Modal State for Add Brand / Shop
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSubmittingBrand, setIsSubmittingBrand] = useState(false);
+  const initialBrandState = {
+    name: "",
+    image: "",
+    description: "",
+    link: "a",
+    email: "",
+    password: "",
+    shopconpassword: "",
+    role: "shop admin",
+  };
+  const [newBrandForm, setNewBrandForm] = useState(initialBrandState);
+
+  // Modal State for Edit Shop
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingShop, setEditingShop] = useState(null);
+  const [editFormData, setEditFormData] = useState(initialBrandState);
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+
+  const fetchShopDetails = useCallback(async () => {
+    if (!id || id === "undefined") {
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const res = await axios.get(`${API_BASE}/api/shops/${id}`);
+      setShop(res.data);
+    } catch (err) {
+      console.error("Error fetching mall details:", err);
+    } finally {
+      setIsLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    fetchShopDetails();
+  }, [fetchShopDetails]);
 
   const filteredMenuItems =
     shop?.menuItems?.filter(
@@ -67,6 +102,7 @@ const BrandDashboard2 = () => {
       });
       setQrSaveMsg(`QR Code successfully assigned to ${selectedShopForQr.name}!`);
       setTimeout(() => setQrSaveMsg(""), 4000);
+      fetchShopDetails();
     } catch (err) {
       console.error("Error saving QR:", err);
       setQrSaveMsg("Error saving QR code. Please try again.");
@@ -94,11 +130,92 @@ const BrandDashboard2 = () => {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
+  // Add Brand / Shop Handler
+  const handleAddBrandSubmit = async (e) => {
+    e.preventDefault();
+    if (!shop?._id) return;
+    setIsSubmittingBrand(true);
+
+    try {
+      await axios.post(`${API_BASE}/api/shops/${shop._id}/menu`, {
+        ...newBrandForm,
+        role: "shop admin",
+      });
+      setIsAddModalOpen(false);
+      setNewBrandForm(initialBrandState);
+      fetchShopDetails();
+      alert(`Store "${newBrandForm.name}" created successfully! You can now assign its QR code.`);
+    } catch (err) {
+      console.error("Error adding brand:", err.response?.data || err.message);
+      alert("Failed to add shop. Please check required fields.");
+    } finally {
+      setIsSubmittingBrand(false);
+    }
+  };
+
+  // Open Edit Modal
+  const openEditModal = (item) => {
+    setEditingShop(item);
+    setEditFormData({
+      name: item.name || "",
+      image: item.image || "",
+      description: item.description || "",
+      link: item.link || "a",
+      email: item.email || "",
+      password: "",
+      shopconpassword: "",
+      role: item.role || "shop admin",
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Submit Edit Shop
+  const handleEditShopSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingShop || !id) return;
+    setIsSubmittingEdit(true);
+
+    try {
+      await axios.put(`${API_BASE}/api/shops/update-menu-item/${id}/${editingShop.name}`, {
+        newName: editFormData.name,
+        newDescription: editFormData.description,
+        newImage: editFormData.image,
+        newLink: editFormData.link,
+        newEmail: editFormData.email,
+        newPassword: editFormData.password,
+        newShopConPassword: editFormData.shopconpassword,
+        newRole: editFormData.role || "shop admin",
+      });
+      setIsEditModalOpen(false);
+      setEditingShop(null);
+      fetchShopDetails();
+      alert(`Store "${editFormData.name}" updated successfully!`);
+    } catch (err) {
+      console.error("Error updating brand:", err);
+      alert("Failed to update store.");
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
+  // Delete Shop Handler
+  const handleDeleteShop = async (item) => {
+    if (window.confirm(`Are you sure you want to delete "${item.name}" from this mall?`)) {
+      try {
+        await axios.delete(`${API_BASE}/api/shops/delete-menu-item/${id}/${item.name}`);
+        fetchShopDetails();
+      } catch (err) {
+        console.error("Error deleting shop:", err);
+        alert("Failed to delete store.");
+      }
+    }
+  };
+
   return (
     <div className="rc-page-container">
       {/* Reusable White & Blue Navbar */}
       <Navbar
-        brandBadge="Mall Showcase"
+        brandBadge="Mall Manager"
         search={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search brands and stores..."
@@ -120,7 +237,7 @@ const BrandDashboard2 = () => {
               Shop QR Studio
             </Button>
             <Button
-              variant="primary"
+              variant="outline"
               size="sm"
               onClick={() => navigate(`/${id}/counter`)}
               icon={
@@ -132,6 +249,22 @@ const BrandDashboard2 = () => {
               }
             >
               Mall Counter
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setNewBrandForm(initialBrandState);
+                setIsAddModalOpen(true);
+              }}
+              icon={
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              }
+            >
+              Add New Shop
             </Button>
           </>
         }
@@ -179,7 +312,7 @@ const BrandDashboard2 = () => {
                 {shop.description || "Discover premium brands, dining spots, and customer queue passes."}
               </p>
             </div>
-            <div>
+            <div style={{ display: "flex", gap: "10px" }}>
               <Button
                 variant="outline"
                 size="sm"
@@ -195,6 +328,16 @@ const BrandDashboard2 = () => {
               >
                 Mall Main QR
               </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setNewBrandForm(initialBrandState);
+                  setIsAddModalOpen(true);
+                }}
+              >
+                + Add Shop
+              </Button>
             </div>
           </div>
         )}
@@ -209,9 +352,9 @@ const BrandDashboard2 = () => {
                 <path d="M16 10a4 4 0 0 1-8 0" />
               </svg>
             }
-            label="Total Available Brands"
+            label="Total Registered Brands"
             value={shop?.menuItems?.length || 0}
-            sub="Curated stores"
+            sub="Stores in this complex"
           />
 
           <StatCard
@@ -235,7 +378,7 @@ const BrandDashboard2 = () => {
             }
             label="Queue Reset Cycle"
             value="Daily (Start #1)"
-            sub="Starts from 1 everyday"
+            sub="Per-shop isolated lines"
           />
         </section>
 
@@ -247,6 +390,15 @@ const BrandDashboard2 = () => {
               Assign distinct QR codes to each shop. When scanned by a customer, passes post directly to that shop's Live Counter Queue.
             </p>
           </div>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setNewBrandForm(initialBrandState);
+              setIsAddModalOpen(true);
+            }}
+          >
+            + Register New Store
+          </Button>
         </div>
 
         {/* Brands Grid */}
@@ -268,16 +420,25 @@ const BrandDashboard2 = () => {
           >
             <div style={{ fontSize: "40px", marginBottom: "12px" }}>🛍️</div>
             <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 8px 0" }}>No Brands Found</h3>
-            <p style={{ color: "var(--rc-text-muted)", fontSize: "14px" }}>
+            <p style={{ color: "var(--rc-text-muted)", fontSize: "14px", marginBottom: "20px" }}>
               {searchQuery
                 ? `No brands matching "${searchQuery}".`
-                : "No stores have been added to this mall yet."}
+                : "No stores have been added to this mall yet. Add your first shop below!"}
             </p>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setNewBrandForm(initialBrandState);
+                setIsAddModalOpen(true);
+              }}
+            >
+              + Add First Shop / Brand
+            </Button>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "22px" }}>
             {filteredMenuItems.map((item, index) => (
-              <article key={index} className="rc-card">
+              <article key={item._id || index} className="rc-card">
                 <div className="rc-card-media">
                   <img
                     src={
@@ -293,7 +454,7 @@ const BrandDashboard2 = () => {
                     }}
                   />
                   <div className="rc-card-badge">
-                    {item.role || "Official Store"}
+                    {item.role || "shop admin"}
                   </div>
                 </div>
 
@@ -303,11 +464,16 @@ const BrandDashboard2 = () => {
                     {item.description || "Visit this store for exclusive collections, offers, and fast service."}
                   </p>
 
-                  <div className="rc-card-actions" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                  {item.email && (
+                    <div style={{ fontSize: "12px", color: "var(--rc-text-muted)", marginBottom: "12px" }}>
+                      Staff Login: <strong>{item.email}</strong>
+                    </div>
+                  )}
+
+                  <div className="rc-card-actions" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                     <Button
                       variant="primary"
                       size="sm"
-                      style={{ flex: "1 1 calc(50% - 4px)" }}
                       onClick={() => navigate(`/${item._id}/counter`)}
                       icon={
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -324,7 +490,6 @@ const BrandDashboard2 = () => {
                     <Button
                       variant="secondary"
                       size="sm"
-                      style={{ flex: "1 1 calc(50% - 4px)" }}
                       onClick={() => openQrModal(item)}
                       icon={
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -337,6 +502,22 @@ const BrandDashboard2 = () => {
                       title="Assign and generate QR code for this shop"
                     >
                       Assign QR
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditModal(item)}
+                    >
+                      Edit
+                    </Button>
+
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleDeleteShop(item)}
+                    >
+                      Delete
                     </Button>
                   </div>
                 </div>
@@ -453,6 +634,170 @@ const BrandDashboard2 = () => {
               </Button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* Add New Shop / Brand Modal */}
+      {isAddModalOpen && (
+        <Modal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          title="Register New Shop / Counter"
+          subtitle={`Admin tool to add a brand or counter under ${shop?.title || "this mall"}`}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setIsAddModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" form="add-shop-form" disabled={isSubmittingBrand}>
+                {isSubmittingBrand ? "Creating..." : "Create Shop"}
+              </Button>
+            </>
+          }
+        >
+          <form
+            id="add-shop-form"
+            onSubmit={handleAddBrandSubmit}
+            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+          >
+            <div>
+              <label className="rc-label">Shop / Brand Name *</label>
+              <input
+                type="text"
+                className="rc-input"
+                placeholder="e.g. Zara, Starbucks, Nike"
+                value={newBrandForm.name}
+                onChange={(e) => setNewBrandForm({ ...newBrandForm, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="rc-label">Cover Image URL</label>
+              <input
+                type="text"
+                className="rc-input"
+                placeholder="https://images.unsplash.com/photo-..."
+                value={newBrandForm.image}
+                onChange={(e) => setNewBrandForm({ ...newBrandForm, image: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="rc-label">Description / Offer</label>
+              <textarea
+                className="rc-input"
+                rows={2}
+                placeholder="Official store counter for VIP fast checkout"
+                value={newBrandForm.description}
+                onChange={(e) => setNewBrandForm({ ...newBrandForm, description: e.target.value })}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div>
+                <label className="rc-label">Shop Admin Staff Email *</label>
+                <input
+                  type="email"
+                  className="rc-input"
+                  placeholder="counter@zara.com"
+                  value={newBrandForm.email}
+                  onChange={(e) => setNewBrandForm({ ...newBrandForm, email: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="rc-label">Staff Login Password *</label>
+                <input
+                  type="password"
+                  className="rc-input"
+                  placeholder="******"
+                  value={newBrandForm.password}
+                  onChange={(e) => setNewBrandForm({ ...newBrandForm, password: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Edit Shop Modal */}
+      {isEditModalOpen && (
+        <Modal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          title={`Edit Store: ${editingShop?.name}`}
+          subtitle={`Update brand details for ${shop?.title || "this mall"}`}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" form="edit-shop-form" disabled={isSubmittingEdit}>
+                {isSubmittingEdit ? "Updating..." : "Save Changes"}
+              </Button>
+            </>
+          }
+        >
+          <form
+            id="edit-shop-form"
+            onSubmit={handleEditShopSubmit}
+            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+          >
+            <div>
+              <label className="rc-label">Shop / Brand Name *</label>
+              <input
+                type="text"
+                className="rc-input"
+                value={editFormData.name}
+                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="rc-label">Cover Image URL</label>
+              <input
+                type="text"
+                className="rc-input"
+                value={editFormData.image}
+                onChange={(e) => setEditFormData({ ...editFormData, image: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="rc-label">Description / Offer</label>
+              <textarea
+                className="rc-input"
+                rows={2}
+                value={editFormData.description}
+                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div>
+                <label className="rc-label">Staff Login Email</label>
+                <input
+                  type="email"
+                  className="rc-input"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="rc-label">Update Password (optional)</label>
+                <input
+                  type="password"
+                  className="rc-input"
+                  placeholder="Leave blank to keep current"
+                  value={editFormData.password}
+                  onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                />
+              </div>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

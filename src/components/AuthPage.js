@@ -25,7 +25,7 @@ const AuthPage = () => {
     if (token) {
       const cleanRole = (role || "").toLowerCase().trim();
       if (cleanRole === "superadmin") {
-        navigate("/branddashboard");
+        navigate("/ownerdashboard");
       } else if (cleanRole === "admin" && shopId) {
         navigate(`/branddashboard2/${shopId}`);
       } else if (
@@ -75,7 +75,7 @@ const AuthPage = () => {
         localStorage.setItem("shopId", userShopId);
 
         if (userRole === "superadmin") {
-          navigate("/branddashboard");
+          navigate("/ownerdashboard");
         } else if (userRole === "admin") {
           navigate(`/branddashboard2/${userShopId}`);
         } else if (

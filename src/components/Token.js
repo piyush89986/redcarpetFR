@@ -13,8 +13,17 @@ function Token() {
     localStorage.getItem("queueToken") || localStorage.getItem("token") || null
   );
   const [loading, setLoading] = useState(!token);
+  const [shopDetails, setShopDetails] = useState(null);
   const userRole = (localStorage.getItem("role") || "").toLowerCase().trim();
   const isStaff = ["shop admin", "shopadmin", "shop", "admin", "superadmin"].includes(userRole);
+
+  useEffect(() => {
+    if (!id) return;
+    axios
+      .get(`${API_BASE}/api/shops/${id}`)
+      .then((res) => setShopDetails(res.data))
+      .catch((err) => console.log("Shop detail notice:", err.message));
+  }, [id]);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -38,6 +47,8 @@ function Token() {
     }
   }, [token]);
 
+  const targetName = shopDetails?.title || shopDetails?.name || "Red Carpet VIP";
+
   return (
     <div className="rc-token-page">
       <div className="rc-token-card">
@@ -47,7 +58,7 @@ function Token() {
 
         <h1 className="rc-token-title">Your Priority Pass is Ready</h1>
         <p className="rc-token-sub">
-          Your blue cart concierge pass has been generated. Please keep this token handy at the counter.
+          {targetName} concierge pass generated. Please keep this token handy when approaching the counter.
         </p>
 
         <div className="rc-token-orb-wrap">

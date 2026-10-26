@@ -73,16 +73,16 @@ const AppRoutes = () => {
         <Route path="/" element={<AppLayout />}>
           <Route index element={<AuthPage />} />
 
-          {/* SuperAdmin-Only Routes */}
+          {/* SuperAdmin Platform Routes */}
           <Route element={<ProtectedRoute allowedRoles={["superadmin"]} />}>
             <Route path="/ownerdashboard" element={<OwnerDashboard />} />
             <Route path="BrandDashboard" element={<BrandDashboard />} />
-            <Route path="/shop/:id" element={<ShopDetail />} />
           </Route>
 
-          {/* Mall Admin + SuperAdmin Routes (QR Studio & Mall Dashboard) */}
+          {/* Mall Admin + SuperAdmin Routes (QR Studio, Mall Management & Store Director) */}
           <Route element={<ProtectedRoute allowedRoles={["admin", "superadmin"]} />}>
             <Route path="/branddashboard2/:id" element={<BrandDashboard2 />} />
+            <Route path="/shop/:id" element={<ShopDetail />} />
             <Route path="/qrcode" element={<QrCode />} />
           </Route>
 
