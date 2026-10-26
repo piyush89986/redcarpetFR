@@ -76,6 +76,7 @@ const AppRoutes = () => {
           {/* SuperAdmin Platform Routes */}
           <Route element={<ProtectedRoute allowedRoles={["superadmin"]} />}>
             <Route path="/ownerdashboard" element={<OwnerDashboard />} />
+            <Route path="/branddashboard" element={<BrandDashboard />} />
             <Route path="BrandDashboard" element={<BrandDashboard />} />
           </Route>
 

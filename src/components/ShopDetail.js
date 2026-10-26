@@ -8,6 +8,16 @@ import "./common/common.css";
 const ShopDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const userRole = (localStorage.getItem("role") || "").toLowerCase().trim();
+  const storedShopId = localStorage.getItem("shopId");
+
+  useEffect(() => {
+    if (userRole === "admin" && storedShopId && id !== storedShopId) {
+      console.warn("Access Restricted: Admin can only view their own mall.");
+      navigate(`/branddashboard2/${storedShopId}`, { replace: true });
+    }
+  }, [userRole, storedShopId, id, navigate]);
+
   const [shop, setShop] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -154,18 +164,33 @@ const ShopDetail = () => {
         searchPlaceholder="Search shops and counters..."
         actions={
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/ownerdashboard")}
-              icon={
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-              }
-            >
-              All Malls
-            </Button>
+            {userRole === "superadmin" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/ownerdashboard")}
+                icon={
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                  </svg>
+                }
+              >
+                All Malls
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/branddashboard2/${storedShopId}`)}
+                icon={
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                  </svg>
+                }
+              >
+                Mall Dashboard
+              </Button>
+            )}
             <Button
               variant="primary"
               size="sm"
@@ -284,59 +309,62 @@ const ShopDetail = () => {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "22px" }}>
             {filteredMenuItems.map((item, index) => (
-              <article key={index} className="rc-card">
-                <div className="rc-card-media">
-                  <img
-                    src={
-                      item.image ||
-                      "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop&q=80"
-                    }
-                    alt={item.name}
-                    className="rc-card-img"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src =
-                        "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop&q=80";
-                    }}
-                  />
-                  <div className="rc-card-badge">
-                    {item.role || "Brand Shop"}
-                  </div>
-                </div>
-
-                <div className="rc-card-body">
-                  <h3 className="rc-card-title">{item.name}</h3>
-                  <p className="rc-card-desc">
-                    {item.description || item.editeddescription || "No description provided."}
-                  </p>
-
-                  <div className="rc-card-meta">
-                    {item.email && (
-                      <div className="rc-meta-item">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                          <polyline points="22,6 12,13 2,6" />
-                        </svg>
-                        <span>{item.email}</span>
-                      </div>
-                    )}
-                    <div className="rc-meta-item">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                      <span>Credentials Configured</span>
+              <article key={item._id || index} className="rc-card-clean">
+                <div className="rc-card-clean-header">
+                  <div className="rc-clean-avatar-wrap">
+                    <div className="rc-avatar-monogram">
+                      {(item.name || "S").substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="rc-clean-header-meta">
+                      <h3 className="rc-clean-title">{item.name}</h3>
+                      <span className="rc-clean-subtitle">{item.role || "Shop Admin"}</span>
                     </div>
                   </div>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      padding: "3px 8px",
+                      borderRadius: "9999px",
+                      background: "var(--rc-blue-50)",
+                      color: "var(--rc-blue-700)",
+                      border: "1px solid var(--rc-blue-200)",
+                    }}
+                  >
+                    Active
+                  </span>
+                </div>
 
-                  <div className="rc-card-actions">
+                <div className="rc-card-clean-body">
+                  <p className="rc-card-clean-desc">
+                    {item.description || item.editeddescription || "Official brand counter for VIP queue and checkout passes."}
+                  </p>
+
+                  {item.email && (
+                    <div style={{ fontSize: "12px", color: "var(--rc-text-muted)", marginBottom: "14px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                      </svg>
+                      <span>Staff: <strong>{item.email}</strong></span>
+                    </div>
+                  )}
+
+                  <div className="rc-card-actions" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                     <Button
                       variant="primary"
                       size="sm"
-                      style={{ flex: 1 }}
-                      onClick={() => navigate(`/${id}/counter`)}
+                      onClick={() => navigate(`/${item._id || id}/counter`)}
+                      icon={
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                          <line x1="8" y1="21" x2="16" y2="21" />
+                          <line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                      }
+                      title="View live counter queue for this specific shop"
                     >
-                      Open Counter
+                      Shop Queue
                     </Button>
                     <Button
                       variant="secondary"
@@ -348,9 +376,10 @@ const ShopDetail = () => {
                     <Button
                       variant="danger"
                       size="sm"
+                      style={{ gridColumn: "1 / -1" }}
                       onClick={() => handleDelete(item)}
                     >
-                      Delete
+                      Delete Store
                     </Button>
                   </div>
                 </div>

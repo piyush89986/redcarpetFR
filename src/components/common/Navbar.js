@@ -27,7 +27,7 @@ const Navbar = ({
 
   const handleBrandClick = () => {
     if (userRole === "superadmin") {
-      navigate("/branddashboard");
+      navigate("/ownerdashboard");
     } else if (userRole === "admin") {
       navigate(userShopId ? `/branddashboard2/${userShopId}` : "/");
     } else if (userRole === "shop admin" || userRole === "shopadmin" || userRole === "shop") {
@@ -48,10 +48,10 @@ const Navbar = ({
     if (userRole === "admin") {
       return [
         { label: "Mall Dashboard", path: `/branddashboard2/${userShopId}` },
-        { label: "QR Studio", path: "/qrcode" },
+        { label: "QR Studio", path: `/qrcode?mallId=${userShopId}` },
       ];
     }
-    // shop admin only has their counter, no global mall links
+    // shop admin only has their counter
     return [];
   };
 
@@ -62,7 +62,6 @@ const Navbar = ({
       {/* Brand Header */}
       <div className="rc-brand" onClick={handleBrandClick}>
         <span className="rc-brand-title">RedCarpet</span>
-        {brandBadge && <span className="rc-brand-badge">{brandBadge}</span>}
       </div>
 
       {/* Navigation Quick Links */}

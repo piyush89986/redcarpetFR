@@ -40,12 +40,19 @@ const OwnerDashboard = () => {
       .finally(() => setIsLoading(false));
   }, [apiBase]);
 
-  const role = localStorage.getItem("role");
+  const role = (localStorage.getItem("role") || "").toLowerCase().trim();
+  const shopId = localStorage.getItem("shopId");
   useEffect(() => {
     if (role && role !== "superadmin") {
-      navigate("/");
+      if (role === "admin" && shopId) {
+        navigate(`/branddashboard2/${shopId}`, { replace: true });
+      } else if ((role === "shop admin" || role === "shopadmin" || role === "shop") && shopId) {
+        navigate(`/${shopId}/counter`, { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     }
-  }, [role, navigate]);
+  }, [role, shopId, navigate]);
 
   const handleChange = (e) => {
     setNewFood({ ...newFood, [e.target.name]: e.target.value });
@@ -64,7 +71,7 @@ const OwnerDashboard = () => {
       description: shop.description || "",
       image: shop.image || "",
       email: shop.email || "",
-      password: "", // keep empty unless updating
+      password: "",
       mallconpassword: "",
       role: shop.role || "superadmin",
     });
@@ -309,7 +316,7 @@ const OwnerDashboard = () => {
                       variant="primary"
                       size="sm"
                       style={{ flex: "1 1 calc(50% - 4px)" }}
-                      onClick={() => navigate(`/shop/${shop._id}`)}
+                      onClick={() => navigate(`/branddashboard2/${shop._id}`)}
                       icon={
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
@@ -318,7 +325,7 @@ const OwnerDashboard = () => {
                         </svg>
                       }
                     >
-                      Manage
+                      Admin Dashboard
                     </Button>
 
                     <Button

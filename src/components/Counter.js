@@ -13,7 +13,7 @@ const Counter = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  // Automation State: Auto SMS to customers ahead in queue
+
   const [autoSmsEnabled, setAutoSmsEnabled] = useState(
     JSON.parse(localStorage.getItem("autoSmsEnabled") ?? "true")
   );
@@ -23,9 +23,35 @@ const Counter = () => {
   const [smsAlertedMap, setSmsAlertedMap] = useState(
     JSON.parse(localStorage.getItem("smsAlertedMap") || "{}")
   );
+  const [lastSmsAlert, setLastSmsAlert] = useState(null);
 
   const apiBase = API_BASE;
-  const userRole = localStorage.getItem("role") || "admin";
+  const rawRole = (localStorage.getItem("role") || "").toLowerCase().trim();
+  const userRole = rawRole || "admin";
+  const storedShopId = localStorage.getItem("shopId");
+
+  // Scoped Access Control:
+  // 1. Shop Admin can only access their own store's live counter
+  // 2. Mall Admin can only access counters within their own mall
+  useEffect(() => {
+    if (
+      (rawRole === "shop admin" || rawRole === "shopadmin" || rawRole === "shop") &&
+      storedShopId &&
+      id &&
+      id !== storedShopId
+    ) {
+      console.warn("Access Restricted: Counter staff can only access their assigned store queue.");
+      navigate(`/${storedShopId}/counter`, { replace: true });
+    }
+
+    if (rawRole === "admin" && storedShopId && shopInfo) {
+      const mallId = shopInfo.mallId || shopInfo._id;
+      if (mallId && String(mallId) !== String(storedShopId)) {
+        console.warn("Access Restricted: Admin can only view live counters within their own mall.");
+        navigate(`/branddashboard2/${storedShopId}`, { replace: true });
+      }
+    }
+  }, [rawRole, storedShopId, id, shopInfo, navigate]);
 
   // Fetch shop details
   useEffect(() => {
@@ -65,101 +91,52 @@ const Counter = () => {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const saveClickedState = (updatedData) => {
-    const clickedState = updatedData.reduce((acc, item) => {
-      acc[item._id] = item.clicked;
-      return acc;
-    }, {});
-    localStorage.setItem("clickedState", JSON.stringify(clickedState));
-  };
 
-  // Start 180s Countdown
-  const startCountdown = async (phoneNumber) => {
-    try {
-      const duration = 180;
-      await fetch(`${apiBase}/api/start-countdown`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ duration, phoneNumber, shopId: id }),
-      });
-    } catch (err) {
-      console.error("Error starting countdown:", err);
-    }
-  };
-
-  // Send SMS Message (with store template & error resilience)
-  const handleSendMessage = async (number, message, alertType, token) => {
+  // Send SMS Message (with store template, applied time/date & Twilio error resilience)
+  const handleSendMessage = async ({ number, name, token, createdAt, alertType, message }) => {
     if (!number) return;
     try {
       const storeName = shopInfo?.title || shopInfo?.name || "Store Counter";
+      const mallName = shopInfo?.mallTitle || "";
       const response = await axios.post(`${apiBase}/api/send-message`, {
         number,
-        message,
-        alertType,
+        name,
         token,
+        createdAt,
         storeName,
+        mallName,
+        alertType,
+        message,
+        shopId: id,
       });
+      if (response.data) {
+        setLastSmsAlert(response.data);
+      }
       return response.data;
     } catch (error) {
       console.error("Error sending SMS alert:", error);
     }
   };
 
-  // Call current customer + Automatic SMS Algorithm
-  const handleCallCustomer = async (index) => {
-    const newData = JSON.parse(JSON.stringify([...data]));
-    newData[index].clicked = true;
-    setData(newData);
-    saveClickedState(newData);
-
-    const targetCustomer = newData[index];
-    const userMobile = targetCustomer.mobile;
-    const storeName = shopInfo?.title || shopInfo?.name || "Store Counter";
-
-    // 1. Send SMS to currently called customer & start TV timer
-    await handleSendMessage(
-      userMobile,
-      `🎉 [${storeName}]: Token #${targetCustomer.token} is now being called! Please proceed to the counter immediately.`,
-      "called",
-      targetCustomer.token
-    );
-    await startCountdown(userMobile);
-
-    // 2. AUTOMATION: Auto-alert customer ahead (e.g. 2 spots ahead)
-    if (autoSmsEnabled) {
-      const aheadIndex = index + alertAheadSlots;
-      if (aheadIndex < newData.length) {
-        const aheadCustomer = newData[aheadIndex];
-        if (aheadCustomer && !smsAlertedMap[aheadCustomer._id]) {
-          console.log(`Auto-alerting customer at position ${aheadIndex + 1} (Token #${aheadCustomer.token})...`);
-          await handleSendMessage(
-            aheadCustomer.mobile,
-            `📢 [${storeName}]: Your turn is approaching! Token #${aheadCustomer.token}. You are next in line. Please head to the store now.`,
-            "approaching",
-            aheadCustomer.token
-          );
-          const updatedAlertMap = { ...smsAlertedMap, [aheadCustomer._id]: true };
-          setSmsAlertedMap(updatedAlertMap);
-          localStorage.setItem("smsAlertedMap", JSON.stringify(updatedAlertMap));
-        }
-      }
-    }
-  };
 
   // Manual SMS Trigger by staff
   const handleSendManualAlert = async (customer) => {
     if (!customer?.mobile) return;
-    const storeName = shopInfo?.title || shopInfo?.name || "Store Counter";
-    await handleSendMessage(
-      customer.mobile,
-      `📢 [${storeName}]: Your turn is approaching! Token #${customer.token}. Please proceed to the counter.`,
-      "approaching",
-      customer.token
-    );
+    const res = await handleSendMessage({
+      number: customer.mobile,
+      name: customer.name,
+      token: customer.token,
+      createdAt: customer.createdAt,
+      alertType: "approaching",
+    });
     const updatedAlertMap = { ...smsAlertedMap, [customer._id]: true };
     setSmsAlertedMap(updatedAlertMap);
     localStorage.setItem("smsAlertedMap", JSON.stringify(updatedAlertMap));
-    alert(`Approaching SMS alert sent to ${customer.name || "customer"} (${customer.mobile}).`);
+    if (res?.body) {
+      alert(`SMS Alert dispatched:\n"${res.body}"`);
+    } else {
+      alert(`Approaching SMS alert sent to ${customer.name || "customer"} (${customer.mobile}).`);
+    }
   };
 
   const filteredQueue = data.filter((item) => {
@@ -178,7 +155,7 @@ const Counter = () => {
     <div className="rc-page-container">
       {/* Reusable White & Blue Navbar */}
       <Navbar
-        brandBadge={shopInfo?.title || shopInfo?.name ? `${shopInfo.title || shopInfo.name} Counter` : "Live Counter"}
+        brandBadge="Live Counter"
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search token #, customer, mobile..."
@@ -190,9 +167,9 @@ const Counter = () => {
                 size="sm"
                 onClick={() => {
                   if (userRole === "superadmin") {
-                    navigate(`/shop/${shopInfo?.mallId || id}`);
+                    navigate(shopInfo?.mallId ? `/branddashboard2/${shopInfo.mallId}` : `/branddashboard2/${id}`);
                   } else {
-                    const mallId = shopInfo?.mallId || localStorage.getItem("shopId") || id;
+                    const mallId = storedShopId || shopInfo?.mallId || id;
                     navigate(`/branddashboard2/${mallId}`);
                   }
                 }}
@@ -280,6 +257,94 @@ const Counter = () => {
             sub="Completed dispatch"
           />
         </section>
+
+        {/* Dynamic SMS Notification Banner */}
+        {lastSmsAlert && (
+          <div
+            style={{
+              padding: "16px 20px",
+              borderRadius: "14px",
+              marginBottom: "24px",
+              border: `1px solid ${
+                lastSmsAlert.delivered
+                  ? "#a7f3d0"
+                  : lastSmsAlert.trialRestricted
+                  ? "#fde68a"
+                  : "#bfdbfe"
+              }`,
+              background: lastSmsAlert.delivered
+                ? "#ecfdf5"
+                : lastSmsAlert.trialRestricted
+                ? "#fffbeb"
+                : "#eff6ff",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: "16px",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 800,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    padding: "2px 8px",
+                    borderRadius: "999px",
+                    background: lastSmsAlert.delivered ? "#059669" : lastSmsAlert.trialRestricted ? "#d97706" : "#2563eb",
+                    color: "#ffffff",
+                  }}
+                >
+                  {lastSmsAlert.delivered
+                    ? "SMS Dispatched"
+                    : lastSmsAlert.trialRestricted
+                    ? "Carrier Notice (Twilio Trial - 572006)"
+                    : "Template Processed"}
+                </span>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--rc-text-main)" }}>
+                  {lastSmsAlert.delivered
+                    ? "Delivered to Phone Carrier"
+                    : lastSmsAlert.trialRestricted
+                    ? "Twilio Trial Restriction Active"
+                    : "SMS Rendered"}
+                </span>
+              </div>
+              <p
+                style={{
+                  fontFamily: "monospace",
+                  fontSize: "13px",
+                  color: "#1e293b",
+                  margin: "6px 0",
+                  background: "#ffffff",
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                }}
+              >
+                "{lastSmsAlert.body}"
+              </p>
+              {lastSmsAlert.trialRestricted && (
+                <p style={{ fontSize: "12px", color: "#92400e", margin: "4px 0 0 0" }}>
+                  💡 <strong>Why handset didn't receive it:</strong> Twilio Free Trial accounts only allow pre-approved templates (Error 572006). To deliver custom dynamic SMS to customer mobile phones, upgrade your Twilio account balance in Twilio Console.
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setLastSmsAlert(null)}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "18px",
+                cursor: "pointer",
+                color: "var(--rc-text-muted)",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Section Heading & Automation Controls */}
         <div className="rc-section-header" style={{ flexWrap: "wrap", gap: "16px" }}>
@@ -504,21 +569,6 @@ const Counter = () => {
                               }
                             >
                               {isAlerted ? "SMS Sent" : "Alert SMS"}
-                            </Button>
-
-                            {/* Call Customer Button */}
-                            <Button
-                              variant={item.clicked ? "secondary" : "primary"}
-                              size="sm"
-                              onClick={() => handleCallCustomer(index)}
-                              icon={
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
-                                </svg>
-                              }
-                            >
-                              {item.clicked ? "Call Again" : "Call Customer"}
                             </Button>
                           </div>
                         </td>

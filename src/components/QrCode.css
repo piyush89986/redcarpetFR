@@ -186,8 +186,15 @@
 }
 
 @keyframes rcDropdownIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .rc-dropdown-search-wrap {
@@ -413,6 +420,7 @@
     padding: 24px 18px;
     gap: 28px;
   }
+
   .rc-qr-title {
     font-size: 22px;
   }

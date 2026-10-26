@@ -9,12 +9,22 @@ import "./common/common.css";
 const BrandDashboard2 = () => {
   const { id: paramId } = useParams();
   const storedShopId = localStorage.getItem("shopId");
-  const id = paramId || storedShopId;
+  const userRole = (localStorage.getItem("role") || "").toLowerCase().trim();
+  const navigate = useNavigate();
+
+  // Enforce access control: Admin can only access their own mall
+  useEffect(() => {
+    if (userRole === "admin" && storedShopId && paramId && paramId !== storedShopId) {
+      console.warn("Access Restricted: Admin can only manage their own assigned mall.");
+      navigate(`/branddashboard2/${storedShopId}`, { replace: true });
+    }
+  }, [userRole, storedShopId, paramId, navigate]);
+
+  const id = userRole === "admin" && storedShopId ? storedShopId : (paramId || storedShopId);
 
   const [shop, setShop] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Modal State for Direct QR Assignment
   const [selectedShopForQr, setSelectedShopForQr] = useState(null);
@@ -221,6 +231,20 @@ const BrandDashboard2 = () => {
         searchPlaceholder="Search brands and stores..."
         actions={
           <>
+            {userRole === "superadmin" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/ownerdashboard")}
+                icon={
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                  </svg>
+                }
+              >
+                All Malls
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -287,20 +311,17 @@ const BrandDashboard2 = () => {
               flexWrap: "wrap",
             }}
           >
-            <img
-              src={
-                shop.image ||
-                "https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?w=800&auto=format&fit=crop&q=80"
-              }
-              alt={shop.title}
+            <div
+              className="rc-avatar-monogram"
               style={{
-                width: "140px",
-                height: "90px",
-                objectFit: "cover",
-                borderRadius: "var(--rc-radius-md)",
-                border: "1px solid var(--rc-border-blue)",
+                width: "68px",
+                height: "68px",
+                fontSize: "26px",
+                borderRadius: "16px",
               }}
-            />
+            >
+              {(shop.title || "M").substring(0, 2).toUpperCase()}
+            </div>
             <div style={{ flex: 1, minWidth: "220px" }}>
               <span className="rc-brand-badge" style={{ marginBottom: "6px", display: "inline-block" }}>
                 Mall Destination
@@ -438,35 +459,44 @@ const BrandDashboard2 = () => {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "22px" }}>
             {filteredMenuItems.map((item, index) => (
-              <article key={item._id || index} className="rc-card">
-                <div className="rc-card-media">
-                  <img
-                    src={
-                      item.image ||
-                      "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop&q=80"
-                    }
-                    alt={item.name}
-                    className="rc-card-img"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src =
-                        "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop&q=80";
-                    }}
-                  />
-                  <div className="rc-card-badge">
-                    {item.role || "shop admin"}
+              <article key={item._id || index} className="rc-card-clean">
+                <div className="rc-card-clean-header">
+                  <div className="rc-clean-avatar-wrap">
+                    <div className="rc-avatar-monogram">
+                      {(item.name || "S").substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="rc-clean-header-meta">
+                      <h3 className="rc-clean-title">{item.name}</h3>
+                      <span className="rc-clean-subtitle">{item.role || "Shop Admin"}</span>
+                    </div>
                   </div>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      padding: "3px 8px",
+                      borderRadius: "9999px",
+                      background: "var(--rc-blue-50)",
+                      color: "var(--rc-blue-700)",
+                      border: "1px solid var(--rc-blue-200)",
+                    }}
+                  >
+                    Active
+                  </span>
                 </div>
 
-                <div className="rc-card-body">
-                  <h3 className="rc-card-title">{item.name}</h3>
-                  <p className="rc-card-desc">
-                    {item.description || "Visit this store for exclusive collections, offers, and fast service."}
+                <div className="rc-card-clean-body">
+                  <p className="rc-card-clean-desc">
+                    {item.description || "Official brand counter for VIP queue and checkout passes."}
                   </p>
 
                   {item.email && (
-                    <div style={{ fontSize: "12px", color: "var(--rc-text-muted)", marginBottom: "12px" }}>
-                      Staff Login: <strong>{item.email}</strong>
+                    <div style={{ fontSize: "12px", color: "var(--rc-text-muted)", marginBottom: "14px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                      </svg>
+                      <span>Staff: <strong>{item.email}</strong></span>
                     </div>
                   )}
 
