@@ -37,18 +37,6 @@ const BrandDashboard2 = () => {
         actions={
           <>
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/branddashboard")}
-              icon={
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-              }
-            >
-              Back to Malls
-            </Button>
-            <Button
               variant="primary"
               size="sm"
               onClick={() => navigate(`/${id}/counter`)}

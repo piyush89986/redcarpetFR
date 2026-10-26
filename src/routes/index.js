@@ -73,18 +73,21 @@ const AppRoutes = () => {
         <Route path="/" element={<AppLayout />}>
           <Route index element={<AuthPage />} />
 
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
+          {/* SuperAdmin-Only Routes */}
+          <Route element={<ProtectedRoute allowedRoles={["superadmin"]} />}>
             <Route path="/ownerdashboard" element={<OwnerDashboard />} />
             <Route path="BrandDashboard" element={<BrandDashboard />} />
             <Route path="/shop/:id" element={<ShopDetail />} />
-            <Route path="/branddashboard2/:id" element={<BrandDashboard2 />} />
             <Route path="/qrcode" element={<QrCode />} />
+          </Route>
+
+          {/* Owner + SuperAdmin Routes (both can access) */}
+          <Route element={<ProtectedRoute allowedRoles={["owner", "superadmin"]} />}>
+            <Route path="/branddashboard2/:id" element={<BrandDashboard2 />} />
             <Route path="/:id/counter" element={<Counter />} />
             <Route path="/:id/editdisplay" element={<EditDisplay />} />
             <Route path="/:id/countdown" element={<Countdown />} />
             <Route path="/display" element={<Display />} />
-            
           </Route>
           <Route path="/:id">
             <Route index element={<Home />} />
