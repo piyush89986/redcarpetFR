@@ -51,7 +51,7 @@ const QRGenerator = () => {
     shopsData.forEach((mall) => {
       // If admin and user has a specific mall, can filter or keep all
       const isMallForAdmin = !userShopId || mall._id === userShopId || userRole === "superadmin";
-      
+
       // Top-level Mall
       if (mall.title && isMallForAdmin) {
         targets.push({
@@ -86,6 +86,8 @@ const QRGenerator = () => {
     return targets;
   }, [shopsData, userRole, userShopId]);
 
+  const BASE_QR_URL = "https://redcarpet-fr-git-main-piyush-singh-tanwar-s-projects.vercel.app";
+
   // Load a target's saved QR settings from DB
   const loadTargetQR = useCallback(
     async (targetId) => {
@@ -96,14 +98,18 @@ const QRGenerator = () => {
       setSaveSuccessMsg("");
       setSaveErrorMsg("");
 
-      const defaultUrl = `${window.location.origin}/${targetId}`;
+      const defaultUrl = `${BASE_QR_URL}/${targetId}`;
       setText(defaultUrl);
       setIsSaved(true);
 
       try {
         const res = await axios.get(`${apiBase}/api/qrcode/${targetId}`);
         if (res.data?.success && res.data.data?.qrUrl) {
-          setText(res.data.data.qrUrl);
+          let url = res.data.data.qrUrl;
+          if (url.includes("localhost") || url.includes("127.0.0.1")) {
+            url = `${BASE_QR_URL}/${targetId}`;
+          }
+          setText(url);
           if (res.data.data.size) {
             setSize(Number(res.data.data.size));
           }
@@ -199,7 +205,7 @@ const QRGenerator = () => {
   // Reset to Default Welcome Page
   const handleResetToDefault = () => {
     if (!selectedTargetId) return;
-    const defaultUrl = `${window.location.origin}/${selectedTargetId}`;
+    const defaultUrl = `${BASE_QR_URL}/${selectedTargetId}`;
     setText(defaultUrl);
     setIsSaved(false);
   };
@@ -560,7 +566,7 @@ const QRGenerator = () => {
 
             <div ref={qrRef} className="rc-qr-canvas-frame">
               <QRCodeCanvas
-                value={text || `${window.location.origin}/welcome`}
+                value={text || `${BASE_QR_URL}/${selectedTargetId || "welcome"}`}
                 size={size}
                 fgColor={fgColor}
                 bgColor={bgColor}

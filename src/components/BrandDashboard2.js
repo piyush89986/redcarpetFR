@@ -82,17 +82,23 @@ const BrandDashboard2 = () => {
         menuItem.description?.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [];
 
+  const BASE_QR_URL = "https://redcarpet-fr-git-main-piyush-singh-tanwar-s-projects.vercel.app";
+
   // Open Direct QR Assignment Modal
   const openQrModal = async (item) => {
     setSelectedShopForQr(item);
     setQrSaveMsg("");
-    const defaultUrl = `${window.location.origin}/${item._id}`;
+    const defaultUrl = `${BASE_QR_URL}/${item._id}`;
     setAssignedQrUrl(defaultUrl);
 
     try {
       const res = await axios.get(`${API_BASE}/api/qrcode/${item._id}`);
       if (res.data?.success && res.data.data?.qrUrl) {
-        setAssignedQrUrl(res.data.data.qrUrl);
+        let url = res.data.data.qrUrl;
+        if (url.includes("localhost") || url.includes("127.0.0.1")) {
+          url = `${BASE_QR_URL}/${item._id}`;
+        }
+        setAssignedQrUrl(url);
       }
     } catch (err) {
       console.log("No custom QR yet, using default shop pass link");
@@ -581,7 +587,7 @@ const BrandDashboard2 = () => {
               }}
             >
               <QRCodeCanvas
-                value={assignedQrUrl || `${window.location.origin}/${selectedShopForQr._id}`}
+                value={assignedQrUrl || `${BASE_QR_URL}/${selectedShopForQr._id}`}
                 size={200}
                 fgColor="#000000"
                 bgColor="#ffffff"
@@ -603,7 +609,7 @@ const BrandDashboard2 = () => {
                 <span>Assigned Destination Link *</span>
                 <span
                   style={{ color: "var(--rc-blue-600)", cursor: "pointer", textDecoration: "underline", fontSize: "12px" }}
-                  onClick={() => setAssignedQrUrl(`${window.location.origin}/${selectedShopForQr._id}`)}
+                  onClick={() => setAssignedQrUrl(`${BASE_QR_URL}/${selectedShopForQr._id}`)}
                 >
                   Reset Default
                 </span>
