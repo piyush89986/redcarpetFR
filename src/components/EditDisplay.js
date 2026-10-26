@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar, Button } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 
 function EditDisplay() {
@@ -14,7 +15,7 @@ function EditDisplay() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+  const apiBase = API_BASE;
 
   useEffect(() => {
     axios

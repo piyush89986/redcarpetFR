@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 import "./Token.css";
 
@@ -15,7 +16,7 @@ function Token() {
     const fetchToken = async () => {
       try {
         const phone = localStorage.getItem("phone");
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+        const apiBase = API_BASE;
         const response = await axios.get(`${apiBase}/api/get-token?phone=${phone}`);
         if (response.data?.token) {
           setToken(response.data.token);

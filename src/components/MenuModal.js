@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import API_BASE from "../apiConfig";
 
 const MenuModal = ({ shop, onClose }) => {
   const [menuItem, setMenuItem] = useState({ 
@@ -26,7 +27,7 @@ const MenuModal = ({ shop, onClose }) => {
     }
 
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/shops/${shop._id}/menu`, menuItem);
+      const response = await axios.post(`${API_BASE}/api/shops/${shop._id}/menu`, menuItem);
       alert("Menu item added successfully!");
       console.log("Success:", response.data);
       window.location.reload();

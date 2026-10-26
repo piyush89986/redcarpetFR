@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Navbar, Button, StatCard, Modal } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 
 const OwnerDashboard = () => {
@@ -24,8 +25,7 @@ const OwnerDashboard = () => {
   const [newFood, setNewFood] = useState(initialFormState);
   const [editFood, setEditFood] = useState(null);
 
-  const apiBase =
-    process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+  const apiBase = API_BASE;
 
   useEffect(() => {
     setIsLoading(true);

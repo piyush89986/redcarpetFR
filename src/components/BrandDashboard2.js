@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { Navbar, Button, StatCard } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 
 const BrandDashboard2 = () => {
@@ -14,7 +15,7 @@ const BrandDashboard2 = () => {
   useEffect(() => {
     setIsLoading(true);
     axios
-      .get(`${process.env.REACT_APP_API_BASE_URL}/api/shops/${id}`)
+      .get(`${API_BASE}/api/shops/${id}`)
       .then((res) => setShop(res.data))
       .catch((err) => console.error(err))
       .finally(() => setIsLoading(false));

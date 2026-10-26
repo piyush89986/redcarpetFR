@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import API_BASE from "../apiConfig";
 
 const Signup = () => {
   const [name, setName] = useState("");
@@ -14,7 +15,7 @@ const Signup = () => {
     try {
       console.log('sdfghj')
       await axios.post(
-        `${process.env.REACT_APP_API_BASE_URL}/api/auth/signup`,
+        `${API_BASE}/api/auth/signup`,
         { name, email, password, role: "owner" }
       );
       navigate("/login");

@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { gsap } from "gsap";
 import { Button } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 
 const AuthPage = () => {
@@ -49,7 +50,7 @@ const AuthPage = () => {
     setLoading(true);
 
     try {
-      const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+      const apiBase = API_BASE;
       const url = isSignup
         ? `${apiBase}/api/auth/signup`
         : `${apiBase}/api/auth/login`;

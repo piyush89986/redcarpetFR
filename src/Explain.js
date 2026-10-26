@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import axios from "axios";
 import { Button } from "./components/common";
+import API_BASE from "./apiConfig";
 import "./components/common/common.css";
 import "./Explain.css";
 
@@ -11,7 +12,7 @@ function Explain() {
 
   useEffect(() => {
     if (!id) return;
-    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+    const apiBase = API_BASE;
     axios
       .get(`${apiBase}/api/shops/${id}`)
       .then((res) => setMall(res.data))

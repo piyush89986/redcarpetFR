@@ -3,6 +3,7 @@ import { gsap } from "gsap";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams } from "react-router";
+import API_BASE from "../apiConfig";
 
 
 function Display() {
@@ -18,7 +19,7 @@ function Display() {
     
     if(!id)return
     axios
-      .get(`${process.env.REACT_APP_API_BASE_URL}/api/display/${id}`)
+      .get(`${API_BASE}/api/display/${id}`)
       .then((res) => {
         const data = res.data || {}; // ✅ Fix: Prevents errors if res.data is null
         setBackgroundImage(data.backgroundImage || "");
@@ -43,7 +44,7 @@ function Display() {
         royalPassText,
       };
 
-      await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/display`, updatedData);
+      await axios.post(`${API_BASE}/api/display`, updatedData);
       alert("Updated Successfully!");
 
       // ✅ Instead of making another GET request, update state directly

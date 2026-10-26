@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import API_BASE from "../apiConfig";
 
 const ShopList = () => {
     const [shops, setShops] = useState([]);
@@ -12,7 +13,7 @@ const ShopList = () => {
 
     const fetchShopItems = async () => {
         try {
-            const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/shops`); // Replace with your API
+            const response = await axios.get(`${API_BASE}/api/shops`); // Replace with your API
             setShops(response.data);
         } catch (error) {
             console.error("Error fetching shop items:", error);
@@ -30,7 +31,7 @@ const ShopList = () => {
 
     const handleSave = async () => {
         try {
-            await axios.put(`${process.env.REACT_APP_API_BASE_URL}/api/shops/update/${editShop}`, formData);
+            await axios.put(`${API_BASE}/api/shops/update/${editShop}`, formData);
             fetchShopItems();
             setEditShop(null);
         } catch (error) {

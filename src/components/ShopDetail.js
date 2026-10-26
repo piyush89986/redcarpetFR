@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar, Button, StatCard, Modal } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 
 const ShopDetail = () => {
@@ -29,7 +30,7 @@ const ShopDetail = () => {
 
   const [formData, setFormData] = useState(initialBrandState);
 
-  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+  const apiBase = API_BASE;
 
   const fetchShopDetails = useCallback(async () => {
     try {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar, Button, StatCard } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 
 const Counter = () => {
@@ -11,7 +12,7 @@ const Counter = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+  const apiBase = API_BASE;
 
   // Fetch real-time queue data from API
   const fetchData = useCallback(async () => {

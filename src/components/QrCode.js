@@ -3,6 +3,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Navbar, Button } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 import "./QrCode.css";
 
@@ -23,7 +24,7 @@ const QRGenerator = () => {
   const qrRef = useRef(null);
   const dropdownRef = useRef(null);
 
-  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+  const apiBase = API_BASE;
 
   // Strict Black and White standard
   const fgColor = "#000000";

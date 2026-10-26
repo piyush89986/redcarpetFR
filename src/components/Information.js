@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 import "./Information.css";
 
@@ -20,7 +21,7 @@ function Information() {
   const [successMsg, setSuccessMsg] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+  const apiBase = API_BASE;
 
   // Fetch Mall Details
   useEffect(() => {

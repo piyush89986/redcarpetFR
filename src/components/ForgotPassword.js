@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import API_BASE from "../apiConfig";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -9,7 +10,7 @@ const ForgotPassword = () => {
 
   const handleCheckUser = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/check-user`, {
+      const response = await fetch(`${API_BASE}/api/check-user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, role }),
@@ -32,7 +33,7 @@ const ForgotPassword = () => {
   
 
   const handleResetPassword = async () => {
-    const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/reset-password`, {
+    const response = await fetch(`${API_BASE}/api/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, role, newPassword, confirmPassword }),

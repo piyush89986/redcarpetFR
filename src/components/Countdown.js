@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 
-const socket = io(process.env.REACT_APP_API_BASE_URL || "http://localhost:5000");
+const socket = io(API_BASE);
 
 const Countdown = () => {
   const [timeLeft, setTimeLeft] = useState(180);
@@ -13,7 +14,7 @@ const Countdown = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-countdown`)
+    fetch(`${API_BASE}/api/get-countdown`)
       .then((res) => res.json())
       .then((data) => {
         if (data && data.startTime) {

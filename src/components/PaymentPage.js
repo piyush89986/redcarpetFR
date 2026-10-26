@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { QrCode, Clock, ShoppingBag } from "lucide-react";
 import { Button } from "./common";
+import API_BASE from "../apiConfig";
 import "./common/common.css";
 import "./PaymentPage.css";
 
@@ -12,7 +13,7 @@ const PaymentPage = ({ amount = 120 }) => {
   const [loading, setLoading] = useState(false);
   const [mall, setMall] = useState(null);
 
-  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+  const apiBase = API_BASE;
 
   // Fetch Mall Details dynamically to match the rest of the application
   useEffect(() => {
