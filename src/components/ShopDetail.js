@@ -25,7 +25,7 @@ const ShopDetail = () => {
     email: "",
     password: "",
     shopconpassword: "",
-    role: "owner",
+    role: "admin",
   };
 
   const [formData, setFormData] = useState(initialBrandState);
@@ -67,7 +67,7 @@ const ShopDetail = () => {
       email: item.email || item.editedemail || "",
       password: "", // empty for security unless editing
       shopconpassword: "",
-      role: item.role || item.editedrole || "owner",
+      role: item.role || item.editedrole || "admin",
     });
     setIsEditModalOpen(true);
   };

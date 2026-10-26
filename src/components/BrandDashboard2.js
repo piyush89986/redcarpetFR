@@ -37,6 +37,21 @@ const BrandDashboard2 = () => {
         actions={
           <>
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/qrcode?mallId=${id}`)}
+              icon={
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                </svg>
+              }
+            >
+              Shop QR Studio
+            </Button>
+            <Button
               variant="primary"
               size="sm"
               onClick={() => navigate(`/${id}/counter`)}
@@ -48,7 +63,7 @@ const BrandDashboard2 = () => {
                 </svg>
               }
             >
-              Live Counter
+              Mall Counter
             </Button>
           </>
         }
@@ -203,36 +218,40 @@ const BrandDashboard2 = () => {
                     {item.description || "Visit this store for exclusive collections, offers, and fast service."}
                   </p>
 
-                  <div className="rc-card-actions">
-                    {item.link ? (
-                      <a
-                        href={`/?callbackUrl=${item._id}`}
-                        onClick={() => localStorage.removeItem("token")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rc-btn rc-btn-primary rc-btn-sm"
-                        style={{ flex: 1 }}
-                      >
-                        Visit Store
-                      </a>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        style={{ flex: 1 }}
-                        onClick={() => navigate(`/${id}/counter`)}
-                      >
-                        Queue Counter
-                      </Button>
-                    )}
+                  <div className="rc-card-actions" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      style={{ flex: "1 1 calc(50% - 4px)" }}
+                      onClick={() => navigate(`/${item._id}/counter`)}
+                      icon={
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                          <line x1="8" y1="21" x2="16" y2="21" />
+                          <line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                      }
+                      title="View live counter queue for this specific shop"
+                    >
+                      Shop Queue
+                    </Button>
 
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/${id}/counter`)}
-                      title="View live queue"
+                      style={{ flex: "1 1 calc(50% - 4px)" }}
+                      onClick={() => navigate(`/qrcode?shopId=${item._id}&mallId=${id}`)}
+                      icon={
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <rect x="3" y="3" width="7" height="7" />
+                          <rect x="14" y="3" width="7" height="7" />
+                          <rect x="14" y="14" width="7" height="7" />
+                          <rect x="3" y="14" width="7" height="7" />
+                        </svg>
+                      }
+                      title="Generate and assign QR code for this shop"
                     >
-                      Counter
+                      Shop QR
                     </Button>
                   </div>
                 </div>

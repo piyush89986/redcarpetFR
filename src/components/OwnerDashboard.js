@@ -414,7 +414,7 @@ const OwnerDashboard = () => {
               onChange={handleChange}
             >
               <option value="superadmin">SuperAdmin</option>
-              <option value="owner">Mall Manager / Owner</option>
+              <option value="admin">Admin (Mall Manager)</option>
             </select>
           </div>
 

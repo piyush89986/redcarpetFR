@@ -124,18 +124,18 @@ function Information() {
       });
 
       if (res.data.success) {
-        // Save user into phoenixusers queue
-        const tokenNum = generateToken();
+        // Save user into queue with backend-assigned 12-hour refreshed token
         const { data: infoData } = await axios.post(`${apiBase}/api/information`, {
           name: name.trim(),
           mobile: cleanMobile,
           email: email.trim(),
-          token: tokenNum,
           shopid: id,
         });
 
+        const assignedToken = infoData?.token || infoData?.newInfo?.token || "101";
         const userId = infoData?.newInfo?._id || "";
-        localStorage.setItem("token", String(tokenNum));
+        localStorage.setItem("token", String(assignedToken));
+        localStorage.setItem("phone", cleanMobile);
         navigate(`/${id}/paymentpage?userId=${userId}`);
       } else {
         setErrorMsg("Invalid OTP code. Please check and try again.");

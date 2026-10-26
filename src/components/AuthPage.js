@@ -23,7 +23,7 @@ const AuthPage = () => {
     const shopId = localStorage.getItem("shopId");
 
     if (token) {
-      if (role === "owner" && shopId) {
+      if (role === "admin" && shopId) {
         navigate(`/branddashboard2/${shopId}`);
       } else if (role === "superadmin") {
         navigate("/branddashboard");
@@ -55,7 +55,7 @@ const AuthPage = () => {
         ? `${apiBase}/api/auth/signup`
         : `${apiBase}/api/auth/login`;
       const data = isSignup
-        ? { name, email, password, role: "owner" }
+        ? { name, email, password, role: "admin" }
         : { email, password };
 
       const res = await axios.post(url, data);
@@ -65,7 +65,7 @@ const AuthPage = () => {
         localStorage.setItem("role", res.data.user.role || "user");
         localStorage.setItem("shopId", res.data.shopId || "");
 
-        if (res.data.user.role === "owner") {
+        if (res.data.user.role === "admin") {
           navigate(`/branddashboard2/${res.data.shopId}`);
         } else if (res.data.user.role === "superadmin") {
           navigate("/branddashboard");

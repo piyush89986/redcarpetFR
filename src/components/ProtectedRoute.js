@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 
-// allowedRoles: array of roles allowed, e.g. ["superadmin"] or ["superadmin","owner"]
+// allowedRoles: array of roles allowed, e.g. ["superadmin"] or ["superadmin","admin"]
 // If no allowedRoles passed, just check for token (any logged-in user)
 const ProtectedRoute = ({ allowedRoles }) => {
   const token = localStorage.getItem("token");
@@ -12,7 +12,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
 
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
     // Logged in but wrong role — redirect to their correct dashboard
-    if (role === "owner") {
+    if (role === "admin") {
       const shopId = localStorage.getItem("shopId");
       return <Navigate to={`/branddashboard2/${shopId}`} replace />;
     }

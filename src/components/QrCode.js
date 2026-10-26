@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { QRCodeCanvas } from "qrcode.react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { Navbar, Button } from "./common";
 import API_BASE from "../apiConfig";
@@ -9,8 +9,10 @@ import "./QrCode.css";
 
 const QRGenerator = () => {
   const navigate = useNavigate();
-  const [shops, setShops] = useState([]);
-  const [selectedMallId, setSelectedMallId] = useState("");
+  const location = useLocation();
+
+  const [shopsData, setShopsData] = useState([]);
+  const [selectedTargetId, setSelectedTargetId] = useState("");
   const [text, setText] = useState("");
   const [size, setSize] = useState(240);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -25,6 +27,8 @@ const QRGenerator = () => {
   const dropdownRef = useRef(null);
 
   const apiBase = API_BASE;
+  const userRole = localStorage.getItem("role") || "admin";
+  const userShopId = localStorage.getItem("shopId") || "";
 
   // Strict Black and White standard
   const fgColor = "#000000";
@@ -41,52 +45,116 @@ const QRGenerator = () => {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  // Load a mall and fetch its saved QR settings from DB
-  const loadMallQR = useCallback(async (mallId) => {
-    setSelectedMallId(mallId);
-    setIsDropdownOpen(false);
-    setSearchQuery("");
-    setSaveSuccessMsg("");
-    setSaveErrorMsg("");
+  // Build flattened list of targets (Malls + Individual Shops)
+  const allTargets = useMemo(() => {
+    const targets = [];
+    shopsData.forEach((mall) => {
+      // If admin and user has a specific mall, can filter or keep all
+      const isMallForAdmin = !userShopId || mall._id === userShopId || userRole === "superadmin";
+      
+      // Top-level Mall
+      if (mall.title && isMallForAdmin) {
+        targets.push({
+          id: mall._id,
+          name: mall.title,
+          type: "mall",
+          category: "Mall Counter",
+          mallName: mall.title,
+          image: mall.image,
+          description: mall.description || `Mall ID: ${mall._id}`,
+        });
 
-    const defaultUrl = `${window.location.origin}/${mallId}`;
-    setText(defaultUrl);
-    setIsSaved(true);
-
-    try {
-      const res = await axios.get(`${apiBase}/api/qrcode/${mallId}`);
-      if (res.data?.success && res.data.data?.qrUrl) {
-        setText(res.data.data.qrUrl);
-        if (res.data.data.size) {
-          setSize(Number(res.data.data.size));
+        // Individual Shops inside this Mall
+        if (Array.isArray(mall.menuItems)) {
+          mall.menuItems.forEach((store) => {
+            if (store._id && store.name) {
+              targets.push({
+                id: store._id,
+                name: store.name,
+                type: "shop",
+                category: `Shop in ${mall.title}`,
+                mallName: mall.title,
+                mallId: mall._id,
+                image: store.image || mall.image,
+                description: store.description || `Store inside ${mall.title}`,
+              });
+            }
+          });
         }
       }
-    } catch (err) {
-      console.log("No custom QR saved yet, using default welcome page:", err.message);
-    }
-  }, [apiBase]);
+    });
+    return targets;
+  }, [shopsData, userRole, userShopId]);
 
-  // Fetch all malls on mount
+  // Load a target's saved QR settings from DB
+  const loadTargetQR = useCallback(
+    async (targetId) => {
+      if (!targetId) return;
+      setSelectedTargetId(targetId);
+      setIsDropdownOpen(false);
+      setSearchQuery("");
+      setSaveSuccessMsg("");
+      setSaveErrorMsg("");
+
+      const defaultUrl = `${window.location.origin}/${targetId}`;
+      setText(defaultUrl);
+      setIsSaved(true);
+
+      try {
+        const res = await axios.get(`${apiBase}/api/qrcode/${targetId}`);
+        if (res.data?.success && res.data.data?.qrUrl) {
+          setText(res.data.data.qrUrl);
+          if (res.data.data.size) {
+            setSize(Number(res.data.data.size));
+          }
+        }
+      } catch (err) {
+        console.log("No custom QR saved yet, using default welcome link:", err.message);
+      }
+    },
+    [apiBase]
+  );
+
+  // Fetch all malls on mount & check query params
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const queryShopId = searchParams.get("shopId");
+    const queryMallId = searchParams.get("mallId");
+
     axios
       .get(`${apiBase}/api/shops`)
       .then((res) => {
-        const validShops = (res.data || []).filter((s) => s.title);
-        setShops(validShops);
-        if (validShops.length > 0) {
-          const firstMall =
-            validShops.find((s) => s._id === "6adcc3b558d7c3fef67b302f") ||
-            validShops[0];
-          loadMallQR(firstMall._id);
+        const validMalls = (res.data || []).filter((s) => s.title);
+        setShopsData(validMalls);
+
+        // Determine which target to select first
+        if (queryShopId) {
+          loadTargetQR(queryShopId);
+        } else if (queryMallId) {
+          loadTargetQR(queryMallId);
+        } else if (userShopId) {
+          loadTargetQR(userShopId);
+        } else if (validMalls.length > 0) {
+          loadTargetQR(validMalls[0]._id);
         }
       })
-      .catch((err) => console.log("Failed to fetch malls for QR:", err.message));
-  }, [apiBase, loadMallQR]);
+      .catch((err) => console.log("Failed to fetch shops for QR:", err.message));
+  }, [apiBase, location.search, userShopId, loadTargetQR]);
+
+  const selectedTarget = allTargets.find((t) => t.id === selectedTargetId);
+
+  // Filter targets by search
+  const filteredTargets = allTargets.filter(
+    (t) =>
+      t.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Save current QR settings to Database
   const handleSaveToDb = async () => {
-    if (!selectedMallId) {
-      setSaveErrorMsg("Please select a mall first.");
+    if (!selectedTargetId) {
+      setSaveErrorMsg("Please select a mall or shop first.");
       return;
     }
     if (!text.trim()) {
@@ -99,14 +167,15 @@ const QRGenerator = () => {
     setSaveErrorMsg("");
 
     try {
-      const res = await axios.post(`${apiBase}/api/qrcode/${selectedMallId}`, {
+      const res = await axios.post(`${apiBase}/api/qrcode/${selectedTargetId}`, {
         qrUrl: text.trim(),
         size: Number(size),
       });
 
       if (res.data?.success) {
         setIsSaved(true);
-        setSaveSuccessMsg("QR Code settings saved to database successfully!");
+        const name = selectedTarget?.name || "Target";
+        setSaveSuccessMsg(`QR Code for "${name}" saved to database successfully!`);
         setTimeout(() => setSaveSuccessMsg(""), 4000);
       } else {
         setSaveErrorMsg(res.data?.message || "Failed to save QR configuration.");
@@ -127,6 +196,14 @@ const QRGenerator = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Reset to Default Welcome Page
+  const handleResetToDefault = () => {
+    if (!selectedTargetId) return;
+    const defaultUrl = `${window.location.origin}/${selectedTargetId}`;
+    setText(defaultUrl);
+    setIsSaved(false);
+  };
+
   // Download high-resolution PNG
   const downloadQR = () => {
     const canvas = qrRef.current ? qrRef.current.querySelector("canvas") : null;
@@ -137,18 +214,22 @@ const QRGenerator = () => {
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    const selectedMall = shops.find((s) => s._id === selectedMallId);
-    const fileName = selectedMall
-      ? `${selectedMall.title.toLowerCase().replace(/\s+/g, "-")}-qr.png`
+    const fileName = selectedTarget
+      ? `${selectedTarget.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-qr.png`
       : "redcarpet-qrcode.png";
     a.download = fileName;
     a.click();
   };
 
-  const selectedMall = shops.find((s) => s._id === selectedMallId);
-  const filteredShops = shops.filter((s) =>
-    (s.title || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Back button routing
+  const handleBackToDashboard = () => {
+    if (userRole === "superadmin") {
+      navigate("/ownerdashboard");
+    } else {
+      const backMallId = userShopId || selectedTarget?.mallId || selectedTargetId;
+      navigate(backMallId ? `/branddashboard2/${backMallId}` : "/");
+    }
+  };
 
   return (
     <div className="rc-qr-page-container">
@@ -159,14 +240,14 @@ const QRGenerator = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate("/ownerdashboard")}
+            onClick={handleBackToDashboard}
             icon={
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M19 12H5M12 19l-7-7 7-7" />
               </svg>
             }
           >
-            Dashboard
+            {userRole === "superadmin" ? "All Malls" : "Mall Dashboard"}
           </Button>
         }
       />
@@ -174,12 +255,10 @@ const QRGenerator = () => {
       <main className="rc-qr-wrapper">
         {/* Header Section */}
         <div className="rc-qr-header">
-          <div className="rc-qr-badge">
-            Official QR Pass Generator
-          </div>
-          <h1 className="rc-qr-title">Mall Counter QR Studio</h1>
+          <div className="rc-qr-badge">Official QR Pass Generator</div>
+          <h1 className="rc-qr-title">Store &amp; Mall QR Studio</h1>
           <p className="rc-qr-sub">
-            Generate high-resolution, high-contrast Black &amp; White QR codes for counter stands, digital kiosks, and entry banners.
+            Generate and assign high-resolution Black &amp; White QR passes for individual shops and mall counters. Each shop has its own QR pass and Live Counter Queue.
           </p>
         </div>
 
@@ -187,10 +266,13 @@ const QRGenerator = () => {
         <div className="rc-qr-card">
           {/* Left Controls */}
           <div className="rc-qr-controls">
-            {/* Custom Redesigned Mall Selector Dropdown */}
+            {/* Target Selector Dropdown */}
             <div className="rc-form-group">
-              <label className="rc-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>Select Mall / Shopping Center *</span>
+              <label
+                className="rc-label"
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
+                <span>Select Shop or Mall *</span>
                 <span className={`rc-status-tag ${isSaved ? "rc-status-saved" : "rc-status-unsaved"}`}>
                   {isSaved ? "● Saved in DB" : "● Unsaved Changes"}
                 </span>
@@ -204,28 +286,23 @@ const QRGenerator = () => {
                 >
                   <div className="rc-dropdown-selected-left">
                     <div className="rc-mall-thumb">
-                      {selectedMall?.image ? (
-                        <img src={selectedMall.image} alt={selectedMall.title} />
+                      {selectedTarget?.image ? (
+                        <img src={selectedTarget.image} alt={selectedTarget.name} />
                       ) : (
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-                          <line x1="9" y1="22" x2="9" y2="22.01" />
-                          <line x1="15" y1="22" x2="15" y2="22.01" />
                           <line x1="8" y1="6" x2="8" y2="6.01" />
                           <line x1="12" y1="6" x2="12" y2="6.01" />
                           <line x1="16" y1="6" x2="16" y2="6.01" />
-                          <line x1="8" y1="10" x2="8" y2="10.01" />
-                          <line x1="12" y1="10" x2="12" y2="10.01" />
-                          <line x1="16" y1="10" x2="16" y2="10.01" />
                         </svg>
                       )}
                     </div>
                     <div className="rc-dropdown-text">
                       <span className="rc-dropdown-mall-title">
-                        {selectedMall ? selectedMall.title : "-- Choose a Mall / Location --"}
+                        {selectedTarget ? selectedTarget.name : "-- Choose a Shop or Mall --"}
                       </span>
                       <span className="rc-dropdown-mall-desc">
-                        {selectedMall ? `ID: ${selectedMall._id}` : "Click to select a mall"}
+                        {selectedTarget ? selectedTarget.category : "Click to select a store"}
                       </span>
                     </div>
                   </div>
@@ -247,7 +324,7 @@ const QRGenerator = () => {
                       <input
                         type="text"
                         autoFocus
-                        placeholder="Search mall name..."
+                        placeholder="Search store or mall name..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="rc-dropdown-search-input"
@@ -255,19 +332,19 @@ const QRGenerator = () => {
                     </div>
 
                     <div className="rc-dropdown-items-list">
-                      {filteredShops.length > 0 ? (
-                        filteredShops.map((shop) => {
-                          const isSelected = shop._id === selectedMallId;
+                      {filteredTargets.length > 0 ? (
+                        filteredTargets.map((target) => {
+                          const isSelected = target.id === selectedTargetId;
                           return (
                             <div
-                              key={shop._id}
+                              key={target.id}
                               className={`rc-dropdown-item ${isSelected ? "active" : ""}`}
-                              onClick={() => loadMallQR(shop._id)}
+                              onClick={() => loadTargetQR(target.id)}
                             >
                               <div className="rc-dropdown-item-info">
                                 <div className="rc-mall-thumb">
-                                  {shop.image ? (
-                                    <img src={shop.image} alt={shop.title} />
+                                  {target.image ? (
+                                    <img src={target.image} alt={target.name} />
                                   ) : (
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                       <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
@@ -275,19 +352,33 @@ const QRGenerator = () => {
                                   )}
                                 </div>
                                 <div>
-                                  <div className="rc-item-title">{shop.title}</div>
-                                  <div className="rc-item-subtitle">{shop.description || `Mall ID: ${shop._id}`}</div>
+                                  <div className="rc-item-title" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                    <span>{target.name}</span>
+                                    {target.type === "shop" && (
+                                      <span
+                                        style={{
+                                          fontSize: "10px",
+                                          padding: "2px 6px",
+                                          borderRadius: "4px",
+                                          background: "var(--rc-blue-50)",
+                                          color: "var(--rc-blue-600)",
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        STORE
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="rc-item-subtitle">{target.category}</div>
                                 </div>
                               </div>
-                              {isSelected && (
-                                <span className="rc-item-check">✓</span>
-                              )}
+                              {isSelected && <span className="rc-item-check">✓</span>}
                             </div>
                           );
                         })
                       ) : (
                         <div style={{ padding: "16px", textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>
-                          No malls matching "{searchQuery}"
+                          No stores or malls matching "{searchQuery}"
                         </div>
                       )}
                     </div>
@@ -296,11 +387,29 @@ const QRGenerator = () => {
               </div>
             </div>
 
-            {/* Generated Destination URL (Always starts from Welcome Page) */}
+            {/* Generated Destination URL (Starts from Welcome Page) */}
             <div className="rc-form-group">
-              <label className="rc-label">
-                QR Destination URL (Always starts from Welcome Page) *
-              </label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <label className="rc-label" style={{ margin: 0 }}>
+                  QR Destination URL (Welcome Pass Page) *
+                </label>
+                <button
+                  type="button"
+                  onClick={handleResetToDefault}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--rc-blue-600)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Reset Default
+                </button>
+              </div>
+
               <div className="rc-link-input-row">
                 <input
                   type="text"
@@ -330,7 +439,7 @@ const QRGenerator = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rc-icon-button"
-                  title="Test welcome page link in new tab"
+                  title="Test welcome pass link in new tab"
                   style={{ textDecoration: "none" }}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -345,8 +454,17 @@ const QRGenerator = () => {
 
             {/* Dimensions Slider */}
             <div className="rc-form-group">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                <label className="rc-label" style={{ margin: 0 }}>QR Code Resolution</label>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "6px",
+                }}
+              >
+                <label className="rc-label" style={{ margin: 0 }}>
+                  QR Code Resolution
+                </label>
                 <span style={{ fontSize: "12px", fontWeight: 700, color: "#1d4ed8" }}>
                   {size} × {size} px
                 </span>
@@ -404,7 +522,7 @@ const QRGenerator = () => {
                     ) : null
                   }
                 >
-                  {isSaving ? "Saving to DB..." : "Save"}
+                  {isSaving ? "Saving..." : "Save to DB"}
                 </Button>
 
                 <Button
@@ -428,7 +546,15 @@ const QRGenerator = () => {
           {/* Right Live Preview Panel */}
           <div className="rc-qr-preview-panel">
             <div className="rc-preview-heading">
-              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#2563eb", display: "inline-block" }}></span>
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  background: "#2563eb",
+                  display: "inline-block",
+                }}
+              ></span>
               Live Scan Preview
             </div>
 
@@ -444,10 +570,14 @@ const QRGenerator = () => {
             </div>
 
             <div className="rc-preview-mall-title">
-              {selectedMall?.title || "Red Carpet VIP"}
+              {selectedTarget?.name || "Red Carpet VIP"}
             </div>
 
-            <div className="rc-preview-badge">
+            <div style={{ fontSize: "12px", color: "var(--rc-blue-600)", fontWeight: 600, marginTop: "2px" }}>
+              {selectedTarget?.category || "VIP Queue Pass"}
+            </div>
+
+            <div className="rc-preview-badge" style={{ marginTop: "12px" }}>
               <span>●</span>
               Strict B&amp;W High-Contrast Print Quality
             </div>

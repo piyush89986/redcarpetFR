@@ -9,10 +9,21 @@ const Counter = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState([]);
+  const [shopInfo, setShopInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const apiBase = API_BASE;
+  const userRole = localStorage.getItem("role") || "admin";
+
+  // Fetch shop or mall details
+  useEffect(() => {
+    if (!id) return;
+    axios
+      .get(`${apiBase}/api/shops/${id}`)
+      .then((res) => setShopInfo(res.data))
+      .catch((err) => console.log("Notice: shop info not loaded:", err.message));
+  }, [id, apiBase]);
 
   // Fetch real-time queue data from API
   const fetchData = useCallback(async () => {
@@ -107,7 +118,7 @@ const Counter = () => {
     <div className="rc-page-container">
       {/* Reusable White & Blue Navbar */}
       <Navbar
-        brandBadge="Queue Counter"
+        brandBadge={shopInfo?.title || shopInfo?.name ? `${shopInfo.title || shopInfo.name} Counter` : "Live Counter"}
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search token #, customer, mobile..."
@@ -116,14 +127,36 @@ const Counter = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate(`/shop/${id}`)}
+              onClick={() => {
+                if (userRole === "superadmin") {
+                  navigate(`/shop/${shopInfo?.mallId || id}`);
+                } else {
+                  const mallId = shopInfo?.mallId || localStorage.getItem("shopId") || id;
+                  navigate(`/branddashboard2/${mallId}`);
+                }
+              }}
               icon={
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
               }
             >
-              Shop Settings
+              Dashboard
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/qrcode?shopId=${id}`)}
+              icon={
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                </svg>
+              }
+            >
+              Shop QR
             </Button>
             <Button
               variant="secondary"
@@ -158,7 +191,7 @@ const Counter = () => {
             }
             label="Total In-Queue Tokens"
             value={data.length}
-            sub="Auto-refreshing every 5s"
+            sub="Active 12-hour session"
           />
 
           <StatCard
@@ -189,9 +222,11 @@ const Counter = () => {
         {/* Section Heading */}
         <div className="rc-section-header">
           <div>
-            <h2 className="rc-section-title">Live Counter Queue & Token Dispatch</h2>
+            <h2 className="rc-section-title">
+              {shopInfo?.title || shopInfo?.name ? `${shopInfo.title || shopInfo.name} Live Queue` : "Live Counter Queue"}
+            </h2>
             <p className="rc-section-desc">
-              Call customer tokens, trigger SMS alerts, and stream 180s live timers to TV displays.
+              Active queue for the current 12-hour session. Token numbers refresh and reset every 12 hours.
             </p>
           </div>
           <Button
