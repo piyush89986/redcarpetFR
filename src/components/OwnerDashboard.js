@@ -120,6 +120,23 @@ const OwnerDashboard = () => {
     }
   };
 
+  const handleToggleSubscription = async (shopId, currentStatus) => {
+    const nextStatus = currentStatus === "inactive" ? "active" : "inactive";
+    try {
+      const res = await axios.patch(`${apiBase}/api/shops/${shopId}/subscription`, {
+        subscriptionStatus: nextStatus,
+      });
+      if (res.data?.success) {
+        setFoods(
+          shops.map((s) => (s._id === shopId ? { ...s, subscriptionStatus: nextStatus } : s))
+        );
+      }
+    } catch (err) {
+      console.error("Subscription update error:", err);
+      alert("Failed to update subscription status.");
+    }
+  };
+
   const filteredShops = shops.filter((shop) =>
     shop?.title?.toLowerCase().includes(search.toLowerCase()) ||
     shop?.description?.toLowerCase().includes(search.toLowerCase())
@@ -246,8 +263,13 @@ const OwnerDashboard = () => {
                         "https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?w=800&auto=format&fit=crop&q=80";
                     }}
                   />
-                  <div className="rc-card-badge">
-                    {shop.role === "superadmin" ? "SuperAdmin Hub" : "Active Mall"}
+                  <div
+                    className="rc-card-badge"
+                    style={{
+                      background: shop.subscriptionStatus === "inactive" ? "#ef4444" : "var(--rc-blue-600)",
+                    }}
+                  >
+                    {shop.subscriptionStatus === "inactive" ? "● Paused" : "● Active Premium"}
                   </div>
                 </div>
 
@@ -282,11 +304,11 @@ const OwnerDashboard = () => {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="rc-card-actions">
+                  <div className="rc-card-actions" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                     <Button
                       variant="primary"
                       size="sm"
-                      style={{ flex: 1 }}
+                      style={{ flex: "1 1 calc(50% - 4px)" }}
                       onClick={() => navigate(`/shop/${shop._id}`)}
                       icon={
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -296,12 +318,27 @@ const OwnerDashboard = () => {
                         </svg>
                       }
                     >
-                      Manage Shops
+                      Manage
+                    </Button>
+
+                    <Button
+                      variant={shop.subscriptionStatus === "inactive" ? "primary" : "outline"}
+                      size="sm"
+                      style={{
+                        flex: "1 1 calc(50% - 4px)",
+                        borderColor: shop.subscriptionStatus === "inactive" ? undefined : "#ef4444",
+                        color: shop.subscriptionStatus === "inactive" ? undefined : "#ef4444",
+                      }}
+                      onClick={() => handleToggleSubscription(shop._id, shop.subscriptionStatus)}
+                      title="Superadmin subscription access control"
+                    >
+                      {shop.subscriptionStatus === "inactive" ? "Activate Plan" : "Pause Plan"}
                     </Button>
 
                     <Button
                       variant="secondary"
                       size="sm"
+                      style={{ flex: "1 1 calc(50% - 4px)" }}
                       onClick={() => openEditModal(shop)}
                       title="Edit Mall Details"
                     >
@@ -311,6 +348,7 @@ const OwnerDashboard = () => {
                     <Button
                       variant="danger"
                       size="sm"
+                      style={{ flex: "1 1 calc(50% - 4px)" }}
                       onClick={() => handleDelete(shop._id, shop.title)}
                       title="Delete Mall"
                     >

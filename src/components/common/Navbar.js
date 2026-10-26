@@ -22,22 +22,51 @@ const Navbar = ({
     navigate("/");
   };
 
-  const navItems = [
-    { label: "Malls", path: "/ownerdashboard" },
-    { label: "Showcase", path: "/branddashboard" },
-    { label: "QR Studio", path: "/qrcode" },
-  ];
+  const userRole = (localStorage.getItem("role") || "").toLowerCase().trim();
+  const userShopId = localStorage.getItem("shopId") || "";
+
+  const handleBrandClick = () => {
+    if (userRole === "superadmin") {
+      navigate("/branddashboard");
+    } else if (userRole === "admin") {
+      navigate(userShopId ? `/branddashboard2/${userShopId}` : "/");
+    } else if (userRole === "shop admin" || userRole === "shopadmin" || userRole === "shop") {
+      navigate(userShopId ? `/${userShopId}/counter` : "/");
+    } else {
+      navigate("/");
+    }
+  };
+
+  const getNavItems = () => {
+    if (userRole === "superadmin") {
+      return [
+        { label: "Malls", path: "/ownerdashboard" },
+        { label: "Showcase", path: "/branddashboard" },
+        { label: "QR Studio", path: "/qrcode" },
+      ];
+    }
+    if (userRole === "admin") {
+      return [
+        { label: "Mall Dashboard", path: `/branddashboard2/${userShopId}` },
+        { label: "QR Studio", path: "/qrcode" },
+      ];
+    }
+    // shop admin only has their counter, no global mall links
+    return [];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <header className="rc-navbar">
       {/* Brand Header */}
-      <div className="rc-brand" onClick={() => navigate("/ownerdashboard")}>
+      <div className="rc-brand" onClick={handleBrandClick}>
         <span className="rc-brand-title">RedCarpet</span>
         {brandBadge && <span className="rc-brand-badge">{brandBadge}</span>}
       </div>
 
       {/* Navigation Quick Links */}
-      {showNavLinks && (
+      {showNavLinks && navItems.length > 0 && (
         <nav className="rc-nav-links">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;

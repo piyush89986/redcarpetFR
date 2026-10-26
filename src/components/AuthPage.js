@@ -23,10 +23,16 @@ const AuthPage = () => {
     const shopId = localStorage.getItem("shopId");
 
     if (token) {
-      if (role === "admin" && shopId) {
-        navigate(`/branddashboard2/${shopId}`);
-      } else if (role === "superadmin") {
+      const cleanRole = (role || "").toLowerCase().trim();
+      if (cleanRole === "superadmin") {
         navigate("/branddashboard");
+      } else if (cleanRole === "admin" && shopId) {
+        navigate(`/branddashboard2/${shopId}`);
+      } else if (
+        (cleanRole === "shop admin" || cleanRole === "shopadmin" || cleanRole === "shop") &&
+        shopId
+      ) {
+        navigate(`/${shopId}/counter`);
       }
     }
   }, [navigate, searchParams]);
@@ -61,18 +67,25 @@ const AuthPage = () => {
       const res = await axios.post(url, data);
 
       if (!isSignup) {
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("role", res.data.user.role || "user");
-        localStorage.setItem("shopId", res.data.shopId || "");
+        const userRole = (res.data.role || res.data.user?.role || "admin").toLowerCase().trim();
+        const userShopId = res.data.shopId || "";
 
-        if (res.data.user.role === "admin") {
-          navigate(`/branddashboard2/${res.data.shopId}`);
-        } else if (res.data.user.role === "superadmin") {
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("role", userRole);
+        localStorage.setItem("shopId", userShopId);
+
+        if (userRole === "superadmin") {
           navigate("/branddashboard");
-        } else if (res.data.user.role === "shop") {
-          navigate(`/${searchParams.get("callbackUrl")}/counter`);
+        } else if (userRole === "admin") {
+          navigate(`/branddashboard2/${userShopId}`);
+        } else if (
+          userRole === "shop admin" ||
+          userRole === "shopadmin" ||
+          userRole === "shop"
+        ) {
+          navigate(`/${userShopId}/counter`);
         } else {
-          navigate("/ownerdashboard");
+          navigate(`/branddashboard2/${userShopId}`);
         }
       } else {
         alert("Account registered successfully! Please log in.");

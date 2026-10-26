@@ -6,17 +6,28 @@ const ProtectedRoute = ({ allowedRoles }) => {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
 
-  if (!token) {
+  if (!token || !role) {
     return <Navigate to="/" replace />;
   }
 
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-    // Logged in but wrong role — redirect to their correct dashboard
-    if (role === "admin") {
+  const cleanRole = (role || "").toLowerCase().trim();
+
+  if (allowedRoles && allowedRoles.length > 0) {
+    const normalizedAllowed = allowedRoles.map((r) => r.toLowerCase().trim());
+    if (!normalizedAllowed.includes(cleanRole)) {
+      // Wrong role — redirect to their specific workspace
       const shopId = localStorage.getItem("shopId");
-      return <Navigate to={`/branddashboard2/${shopId}`} replace />;
+      if (cleanRole === "superadmin") {
+        return <Navigate to="/branddashboard" replace />;
+      }
+      if (cleanRole === "shop admin" || cleanRole === "shopadmin" || cleanRole === "shop") {
+        return <Navigate to={`/${shopId}/counter`} replace />;
+      }
+      if (cleanRole === "admin" && shopId) {
+        return <Navigate to={`/branddashboard2/${shopId}`} replace />;
+      }
+      return <Navigate to="/" replace />;
     }
-    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

@@ -80,15 +80,19 @@ const AppRoutes = () => {
             <Route path="/shop/:id" element={<ShopDetail />} />
           </Route>
 
-          {/* Admin + SuperAdmin Routes (both can access) */}
+          {/* Mall Admin + SuperAdmin Routes (QR Studio & Mall Dashboard) */}
           <Route element={<ProtectedRoute allowedRoles={["admin", "superadmin"]} />}>
             <Route path="/branddashboard2/:id" element={<BrandDashboard2 />} />
-            <Route path="/:id/counter" element={<Counter />} />
-            <Route path="/:id/editdisplay" element={<EditDisplay />} />
-            <Route path="/:id/countdown" element={<Countdown />} />
-            <Route path="/display" element={<Display />} />
             <Route path="/qrcode" element={<QrCode />} />
           </Route>
+
+          {/* Staff Counter & Display Editor Routes (Accessible by Shop Admin, Admin, and SuperAdmin) */}
+          <Route element={<ProtectedRoute allowedRoles={["shop admin", "shopadmin", "shop", "admin", "superadmin"]} />}>
+            <Route path="/:id/counter" element={<Counter />} />
+            <Route path="/:id/editdisplay" element={<EditDisplay />} />
+          </Route>
+
+          {/* Client Public Routes */}
           <Route path="/:id">
             <Route index element={<Home />} />
             <Route path="information" element={<Information />} />
@@ -96,7 +100,10 @@ const AppRoutes = () => {
           </Route>
           <Route path="/:id/token" element={<Token />} />
           <Route path="/:id/information" element={<Information />} />
-          {/* <Route path="/:id/counter" element={<Counter />} /> */}
+          <Route path="/:id/countdown" element={<Countdown />} />
+          <Route path="/countdown/:id" element={<Countdown />} />
+          <Route path="/display" element={<Display />} />
+          <Route path="/:id/display" element={<Display />} />
           <Route path="/forgotpassword" element={<ForgotPassword />} />
           {/* Version route do not change this */}
           <Route

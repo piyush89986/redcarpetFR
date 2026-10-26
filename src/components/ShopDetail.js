@@ -25,7 +25,7 @@ const ShopDetail = () => {
     email: "",
     password: "",
     shopconpassword: "",
-    role: "admin",
+    role: "shop admin",
   };
 
   const [formData, setFormData] = useState(initialBrandState);
@@ -67,7 +67,7 @@ const ShopDetail = () => {
       email: item.email || item.editedemail || "",
       password: "", // empty for security unless editing
       shopconpassword: "",
-      role: item.role || item.editedrole || "admin",
+      role: item.role || item.editedrole || "shop admin",
     });
     setIsEditModalOpen(true);
   };
@@ -432,14 +432,15 @@ const ShopDetail = () => {
 
           <div className="rc-form-group">
             <label className="rc-label">Role Access</label>
-            <input
-              type="text"
+            <select
               name="role"
               className="rc-input"
-              placeholder="owner / manager"
               value={formData.role}
               onChange={handleInputChange}
-            />
+            >
+              <option value="shop admin">Shop Admin (Counter Queue Lead)</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
 
           <div className="rc-form-group">
@@ -538,13 +539,15 @@ const ShopDetail = () => {
 
           <div className="rc-form-group">
             <label className="rc-label">Role Access</label>
-            <input
-              type="text"
+            <select
               name="role"
               className="rc-input"
               value={formData.role}
               onChange={handleInputChange}
-            />
+            >
+              <option value="shop admin">Shop Admin (Counter Queue Lead)</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
 
           <div className="rc-form-group">

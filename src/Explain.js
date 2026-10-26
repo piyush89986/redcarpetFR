@@ -50,20 +50,42 @@ function Explain() {
           </div>
         </div>
 
-        <Link to={`/${id}/information`} style={{ width: "100%", textDecoration: "none" }}>
-          <Button
-            variant="primary"
-            size="lg"
-            style={{ width: "100%" }}
-            icon={
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            }
-          >
-            Get VIP Pass & Cart
-          </Button>
-        </Link>
+        {mall?.subscriptionStatus === "inactive" ? (
+          <div style={{ marginTop: "20px" }}>
+            <div
+              style={{
+                padding: "16px",
+                borderRadius: "12px",
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                color: "#991b1b",
+                fontSize: "14px",
+                fontWeight: 600,
+                marginBottom: "20px",
+              }}
+            >
+              ⚠️ Platform Subscription Notice: Service for this location is currently paused by platform administration.
+            </div>
+            <Button variant="outline" size="lg" disabled style={{ width: "100%", opacity: 0.6 }}>
+              Pass Currently Unavailable
+            </Button>
+          </div>
+        ) : (
+          <Link to={`/${id}/information`} style={{ width: "100%", textDecoration: "none" }}>
+            <Button
+              variant="primary"
+              size="lg"
+              style={{ width: "100%" }}
+              icon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              }
+            >
+              Get VIP Pass &amp; Cart
+            </Button>
+          </Link>
+        )}
       </div>
     </div>
   );

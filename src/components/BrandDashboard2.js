@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { Navbar, Button, StatCard } from "./common";
+import { QRCodeCanvas } from "qrcode.react";
+import { Navbar, Button, StatCard, Modal } from "./common";
 import API_BASE from "../apiConfig";
 import "./common/common.css";
 
@@ -12,6 +13,14 @@ const BrandDashboard2 = () => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Modal State for Direct QR Assignment
+  const [selectedShopForQr, setSelectedShopForQr] = useState(null);
+  const [assignedQrUrl, setAssignedQrUrl] = useState("");
+  const [isSavingQr, setIsSavingQr] = useState(false);
+  const [qrSaveMsg, setQrSaveMsg] = useState("");
+  const [isCopied, setIsCopied] = useState(false);
+  const qrCanvasRef = useRef(null);
+
   useEffect(() => {
     setIsLoading(true);
     axios
@@ -21,10 +30,69 @@ const BrandDashboard2 = () => {
       .finally(() => setIsLoading(false));
   }, [id]);
 
-  const filteredMenuItems = shop?.menuItems?.filter((menuItem) =>
-    menuItem.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    menuItem.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filteredMenuItems =
+    shop?.menuItems?.filter(
+      (menuItem) =>
+        menuItem.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        menuItem.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    ) || [];
+
+  // Open Direct QR Assignment Modal
+  const openQrModal = async (item) => {
+    setSelectedShopForQr(item);
+    setQrSaveMsg("");
+    const defaultUrl = `${window.location.origin}/${item._id}`;
+    setAssignedQrUrl(defaultUrl);
+
+    try {
+      const res = await axios.get(`${API_BASE}/api/qrcode/${item._id}`);
+      if (res.data?.success && res.data.data?.qrUrl) {
+        setAssignedQrUrl(res.data.data.qrUrl);
+      }
+    } catch (err) {
+      console.log("No custom QR yet, using default shop pass link");
+    }
+  };
+
+  // Save Assigned QR Code to Database
+  const handleSaveAssignedQr = async () => {
+    if (!selectedShopForQr) return;
+    setIsSavingQr(true);
+    setQrSaveMsg("");
+
+    try {
+      await axios.post(`${API_BASE}/api/qrcode/${selectedShopForQr._id}`, {
+        qrUrl: assignedQrUrl.trim(),
+        size: 240,
+      });
+      setQrSaveMsg(`QR Code successfully assigned to ${selectedShopForQr.name}!`);
+      setTimeout(() => setQrSaveMsg(""), 4000);
+    } catch (err) {
+      console.error("Error saving QR:", err);
+      setQrSaveMsg("Error saving QR code. Please try again.");
+    } finally {
+      setIsSavingQr(false);
+    }
+  };
+
+  // Download QR PNG
+  const handleDownloadQr = () => {
+    const canvas = qrCanvasRef.current ? qrCanvasRef.current.querySelector("canvas") : null;
+    if (!canvas) return;
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    const safeName = (selectedShopForQr?.name || "shop").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    a.download = `${safeName}-vip-qr.png`;
+    a.click();
+  };
+
+  const handleCopyQrLink = () => {
+    if (!assignedQrUrl) return;
+    navigator.clipboard.writeText(assignedQrUrl);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   return (
     <div className="rc-page-container">
@@ -111,6 +179,23 @@ const BrandDashboard2 = () => {
                 {shop.description || "Discover premium brands, dining spots, and customer queue passes."}
               </p>
             </div>
+            <div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/qrcode?shopId=${id}`)}
+                icon={
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                }
+              >
+                Mall Main QR
+              </Button>
+            </div>
           </div>
         )}
 
@@ -148,18 +233,18 @@ const BrandDashboard2 = () => {
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             }
-            label="Queue Status"
-            value="Active"
-            sub="Real-time dispatch ready"
+            label="Queue Reset Cycle"
+            value="Daily (Start #1)"
+            sub="Starts from 1 everyday"
           />
         </section>
 
         {/* Section Heading */}
         <div className="rc-section-header">
           <div>
-            <h2 className="rc-section-title">Brand Directory & Store Passes</h2>
+            <h2 className="rc-section-title">Brand Directory &amp; Store QR Assignment</h2>
             <p className="rc-section-desc">
-              Browse stores inside {shop?.title || "this mall"} and get fast queue tokens.
+              Assign distinct QR codes to each shop. When scanned by a customer, passes post directly to that shop's Live Counter Queue.
             </p>
           </div>
         </div>
@@ -237,10 +322,10 @@ const BrandDashboard2 = () => {
                     </Button>
 
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       style={{ flex: "1 1 calc(50% - 4px)" }}
-                      onClick={() => navigate(`/qrcode?shopId=${item._id}&mallId=${id}`)}
+                      onClick={() => openQrModal(item)}
                       icon={
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <rect x="3" y="3" width="7" height="7" />
@@ -249,9 +334,9 @@ const BrandDashboard2 = () => {
                           <rect x="3" y="14" width="7" height="7" />
                         </svg>
                       }
-                      title="Generate and assign QR code for this shop"
+                      title="Assign and generate QR code for this shop"
                     >
-                      Shop QR
+                      Assign QR
                     </Button>
                   </div>
                 </div>
@@ -260,6 +345,116 @@ const BrandDashboard2 = () => {
           </div>
         )}
       </main>
+
+      {/* Direct QR Code Assignment Modal for Admin */}
+      {selectedShopForQr && (
+        <Modal
+          isOpen={!!selectedShopForQr}
+          onClose={() => setSelectedShopForQr(null)}
+          title={`Assign QR Code: ${selectedShopForQr.name}`}
+          subtitle={`Admin QR manager for ${shop?.title || "this mall"}`}
+          maxWidth="560px"
+        >
+          <div style={{ textAlign: "center", padding: "10px 0" }}>
+            {/* Live QR Preview */}
+            <div
+              ref={qrCanvasRef}
+              style={{
+                display: "inline-block",
+                padding: "16px",
+                background: "#ffffff",
+                border: "2px solid var(--rc-blue-200)",
+                borderRadius: "16px",
+                boxShadow: "0 8px 24px rgba(37,99,235,0.08)",
+                marginBottom: "20px",
+              }}
+            >
+              <QRCodeCanvas
+                value={assignedQrUrl || `${window.location.origin}/${selectedShopForQr._id}`}
+                size={200}
+                fgColor="#000000"
+                bgColor="#ffffff"
+                level="H"
+                includeMargin={true}
+              />
+            </div>
+
+            <p style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 4px 0", color: "var(--rc-text-main)" }}>
+              {selectedShopForQr.name}
+            </p>
+            <p style={{ fontSize: "12px", color: "var(--rc-text-muted)", margin: "0 0 20px 0" }}>
+              Scanning this QR automatically creates VIP passes in {selectedShopForQr.name}'s Live Counter Queue.
+            </p>
+
+            {/* Editable Destination URL */}
+            <div style={{ textAlign: "left", marginBottom: "16px" }}>
+              <label className="rc-label" style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Assigned Destination Link *</span>
+                <span
+                  style={{ color: "var(--rc-blue-600)", cursor: "pointer", textDecoration: "underline", fontSize: "12px" }}
+                  onClick={() => setAssignedQrUrl(`${window.location.origin}/${selectedShopForQr._id}`)}
+                >
+                  Reset Default
+                </span>
+              </label>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="text"
+                  className="rc-input"
+                  value={assignedQrUrl}
+                  onChange={(e) => setAssignedQrUrl(e.target.value)}
+                  style={{ fontFamily: "monospace", fontSize: "13px" }}
+                />
+                <Button variant="outline" size="sm" onClick={handleCopyQrLink}>
+                  {isCopied ? "Copied" : "Copy"}
+                </Button>
+                <a
+                  href={assignedQrUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rc-btn rc-btn-outline rc-btn-sm"
+                  style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                >
+                  Test ↗
+                </a>
+              </div>
+            </div>
+
+            {/* Feedback message */}
+            {qrSaveMsg && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  background: qrSaveMsg.includes("success") ? "#ecfdf5" : "#fef2f2",
+                  color: qrSaveMsg.includes("success") ? "#047857" : "#b91c1c",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  marginBottom: "16px",
+                  border: `1px solid ${qrSaveMsg.includes("success") ? "#a7f3d0" : "#fecaca"}`,
+                }}
+              >
+                {qrSaveMsg}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "10px" }}>
+              <Button
+                variant="primary"
+                onClick={handleSaveAssignedQr}
+                disabled={isSavingQr}
+                style={{ width: "100%" }}
+              >
+                {isSavingQr ? "Saving..." : "Save & Assign QR"}
+              </Button>
+              <Button variant="outline" onClick={handleDownloadQr} style={{ width: "100%" }}>
+                Download QR PNG
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

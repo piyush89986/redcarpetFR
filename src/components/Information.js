@@ -124,7 +124,7 @@ function Information() {
       });
 
       if (res.data.success) {
-        // Save user into queue with backend-assigned 12-hour refreshed token
+        // Save user into queue with backend-assigned token (starts from 1 everyday)
         const { data: infoData } = await axios.post(`${apiBase}/api/information`, {
           name: name.trim(),
           mobile: cleanMobile,
@@ -132,9 +132,9 @@ function Information() {
           shopid: id,
         });
 
-        const assignedToken = infoData?.token || infoData?.newInfo?.token || "101";
+        const assignedToken = infoData?.token || infoData?.newInfo?.token || "1";
         const userId = infoData?.newInfo?._id || "";
-        localStorage.setItem("token", String(assignedToken));
+        localStorage.setItem("queueToken", String(assignedToken));
         localStorage.setItem("phone", cleanMobile);
         navigate(`/${id}/paymentpage?userId=${userId}`);
       } else {

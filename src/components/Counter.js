@@ -13,10 +13,21 @@ const Counter = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
+  // Automation State: Auto SMS to customers ahead in queue
+  const [autoSmsEnabled, setAutoSmsEnabled] = useState(
+    JSON.parse(localStorage.getItem("autoSmsEnabled") ?? "true")
+  );
+  const [alertAheadSlots, setAlertAheadSlots] = useState(
+    Number(localStorage.getItem("alertAheadSlots") || "2")
+  );
+  const [smsAlertedMap, setSmsAlertedMap] = useState(
+    JSON.parse(localStorage.getItem("smsAlertedMap") || "{}")
+  );
+
   const apiBase = API_BASE;
   const userRole = localStorage.getItem("role") || "admin";
 
-  // Fetch shop or mall details
+  // Fetch shop details
   useEffect(() => {
     if (!id) return;
     axios
@@ -76,30 +87,79 @@ const Counter = () => {
     }
   };
 
-  // Handle calling the customer
-  const handleSendMessage = async (number) => {
+  // Send SMS Message (with store template & error resilience)
+  const handleSendMessage = async (number, message, alertType, token) => {
     if (!number) return;
     try {
+      const storeName = shopInfo?.title || shopInfo?.name || "Store Counter";
       const response = await axios.post(`${apiBase}/api/send-message`, {
         number,
+        message,
+        alertType,
+        token,
+        storeName,
       });
-      if (response.data.success) {
-        alert("Alert notification sent to customer successfully.");
-      }
+      return response.data;
     } catch (error) {
       console.error("Error sending SMS alert:", error);
     }
   };
 
+  // Call current customer + Automatic SMS Algorithm
   const handleCallCustomer = async (index) => {
     const newData = JSON.parse(JSON.stringify([...data]));
     newData[index].clicked = true;
     setData(newData);
     saveClickedState(newData);
 
-    const userMobile = newData[index].mobile;
-    await handleSendMessage(userMobile);
+    const targetCustomer = newData[index];
+    const userMobile = targetCustomer.mobile;
+    const storeName = shopInfo?.title || shopInfo?.name || "Store Counter";
+
+    // 1. Send SMS to currently called customer & start TV timer
+    await handleSendMessage(
+      userMobile,
+      `🎉 [${storeName}]: Token #${targetCustomer.token} is now being called! Please proceed to the counter immediately.`,
+      "called",
+      targetCustomer.token
+    );
     await startCountdown(userMobile);
+
+    // 2. AUTOMATION: Auto-alert customer ahead (e.g. 2 spots ahead)
+    if (autoSmsEnabled) {
+      const aheadIndex = index + alertAheadSlots;
+      if (aheadIndex < newData.length) {
+        const aheadCustomer = newData[aheadIndex];
+        if (aheadCustomer && !smsAlertedMap[aheadCustomer._id]) {
+          console.log(`Auto-alerting customer at position ${aheadIndex + 1} (Token #${aheadCustomer.token})...`);
+          await handleSendMessage(
+            aheadCustomer.mobile,
+            `📢 [${storeName}]: Your turn is approaching! Token #${aheadCustomer.token}. You are next in line. Please head to the store now.`,
+            "approaching",
+            aheadCustomer.token
+          );
+          const updatedAlertMap = { ...smsAlertedMap, [aheadCustomer._id]: true };
+          setSmsAlertedMap(updatedAlertMap);
+          localStorage.setItem("smsAlertedMap", JSON.stringify(updatedAlertMap));
+        }
+      }
+    }
+  };
+
+  // Manual SMS Trigger by staff
+  const handleSendManualAlert = async (customer) => {
+    if (!customer?.mobile) return;
+    const storeName = shopInfo?.title || shopInfo?.name || "Store Counter";
+    await handleSendMessage(
+      customer.mobile,
+      `📢 [${storeName}]: Your turn is approaching! Token #${customer.token}. Please proceed to the counter.`,
+      "approaching",
+      customer.token
+    );
+    const updatedAlertMap = { ...smsAlertedMap, [customer._id]: true };
+    setSmsAlertedMap(updatedAlertMap);
+    localStorage.setItem("smsAlertedMap", JSON.stringify(updatedAlertMap));
+    alert(`Approaching SMS alert sent to ${customer.name || "customer"} (${customer.mobile}).`);
   };
 
   const filteredQueue = data.filter((item) => {
@@ -124,25 +184,27 @@ const Counter = () => {
         searchPlaceholder="Search token #, customer, mobile..."
         actions={
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (userRole === "superadmin") {
-                  navigate(`/shop/${shopInfo?.mallId || id}`);
-                } else {
-                  const mallId = shopInfo?.mallId || localStorage.getItem("shopId") || id;
-                  navigate(`/branddashboard2/${mallId}`);
+            {userRole !== "shop admin" && userRole !== "shopadmin" && userRole !== "shop" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (userRole === "superadmin") {
+                    navigate(`/shop/${shopInfo?.mallId || id}`);
+                  } else {
+                    const mallId = shopInfo?.mallId || localStorage.getItem("shopId") || id;
+                    navigate(`/branddashboard2/${mallId}`);
+                  }
+                }}
+                icon={
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                  </svg>
                 }
-              }}
-              icon={
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-              }
-            >
-              Dashboard
-            </Button>
+              >
+                Mall Dashboard
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -191,7 +253,7 @@ const Counter = () => {
             }
             label="Total In-Queue Tokens"
             value={data.length}
-            sub="Active 12-hour session"
+            sub="Active today's queue"
           />
 
           <StatCard
@@ -213,36 +275,72 @@ const Counter = () => {
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             }
-            label="Called & Served"
+            label="Called &amp; Served"
             value={calledCount}
             sub="Completed dispatch"
           />
         </section>
 
-        {/* Section Heading */}
-        <div className="rc-section-header">
+        {/* Section Heading & Automation Controls */}
+        <div className="rc-section-header" style={{ flexWrap: "wrap", gap: "16px" }}>
           <div>
             <h2 className="rc-section-title">
               {shopInfo?.title || shopInfo?.name ? `${shopInfo.title || shopInfo.name} Live Queue` : "Live Counter Queue"}
             </h2>
             <p className="rc-section-desc">
-              Active queue for the current 12-hour session. Token numbers refresh and reset every 12 hours.
+              Active live queue for today. Automatically refreshes and starts from 1 everyday.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchData}
-            icon={
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="23 4 23 10 17 10" />
-                <polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
-            }
-          >
-            Refresh Queue
-          </Button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            {/* Automation Toggle Button */}
+            <Button
+              variant={autoSmsEnabled ? "primary" : "outline"}
+              size="sm"
+              onClick={() => {
+                const next = !autoSmsEnabled;
+                setAutoSmsEnabled(next);
+                localStorage.setItem("autoSmsEnabled", JSON.stringify(next));
+              }}
+              title="Toggle automatic SMS notification when a customer's turn approaches"
+            >
+              {autoSmsEnabled ? `● Auto-SMS: ON (${alertAheadSlots} Ahead)` : "○ Auto-SMS: OFF (Manual)"}
+            </Button>
+
+            {/* Slots ahead selector */}
+            {autoSmsEnabled && (
+              <select
+                className="rc-input"
+                style={{ padding: "6px 10px", fontSize: "13px", height: "36px", width: "auto" }}
+                value={alertAheadSlots}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setAlertAheadSlots(val);
+                  localStorage.setItem("alertAheadSlots", String(val));
+                }}
+                title="Number of spots ahead to send notification"
+              >
+                <option value={1}>Notify 1 Ahead (Next)</option>
+                <option value={2}>Notify 2 Ahead (Default)</option>
+                <option value={3}>Notify 3 Ahead</option>
+              </select>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchData}
+              icon={
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="23 4 23 10 17 10" />
+                  <polyline points="1 20 1 14 7 14" />
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+              }
+            >
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Queue Table */}
@@ -297,85 +395,136 @@ const Counter = () => {
                       Mobile Contact
                     </th>
                     <th style={{ padding: "14px 20px", fontSize: "13px", fontWeight: 700, color: "var(--rc-blue-900)" }}>
-                      Status
+                      Queue Status
                     </th>
                     <th style={{ padding: "14px 20px", fontSize: "13px", fontWeight: 700, color: "var(--rc-blue-900)", textAlign: "right" }}>
-                      Queue Action
+                      Queue Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredQueue.map((item, index) => (
-                    <tr
-                      key={item._id || index}
-                      style={{
-                        borderBottom: "1px solid var(--rc-border)",
-                        background: index % 2 === 0 ? "var(--rc-white)" : "#fafcff",
-                        transition: "background 0.15s ease",
-                      }}
-                    >
-                      <td style={{ padding: "16px 20px", fontSize: "14px", color: "var(--rc-text-muted)", fontWeight: 600 }}>
-                        {index + 1}
-                      </td>
+                  {filteredQueue.map((item, index) => {
+                    const isAlerted = !!smsAlertedMap[item._id];
+                    return (
+                      <tr
+                        key={item._id || index}
+                        style={{
+                          borderBottom: "1px solid var(--rc-border)",
+                          background: index % 2 === 0 ? "var(--rc-white)" : "#fafcff",
+                          transition: "background 0.15s ease",
+                        }}
+                      >
+                        <td style={{ padding: "16px 20px", fontSize: "14px", color: "var(--rc-text-muted)", fontWeight: 600 }}>
+                          {index + 1}
+                        </td>
 
-                      <td style={{ padding: "16px 20px" }}>
-                        <span
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: "var(--rc-radius-sm)",
-                            background: "var(--rc-blue-50)",
-                            color: "var(--rc-blue-700)",
-                            fontWeight: 800,
-                            fontSize: "14px",
-                            border: "1px solid var(--rc-blue-200)",
-                            letterSpacing: "0.5px",
-                          }}
-                        >
-                          #{item.token || String(index + 1).padStart(3, "0")}
-                        </span>
-                      </td>
+                        <td style={{ padding: "16px 20px" }}>
+                          <span
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: "var(--rc-radius-sm)",
+                              background: "var(--rc-blue-50)",
+                              color: "var(--rc-blue-700)",
+                              fontWeight: 800,
+                              fontSize: "14px",
+                              border: "1px solid var(--rc-blue-200)",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            #{item.token || String(index + 1)}
+                          </span>
+                        </td>
 
-                      <td style={{ padding: "16px 20px", fontSize: "14px", fontWeight: 700, color: "var(--rc-text-main)" }}>
-                        {item.name || "Walk-in Guest"}
-                      </td>
+                        <td style={{ padding: "16px 20px", fontSize: "14px", fontWeight: 700, color: "var(--rc-text-main)" }}>
+                          {item.name || "Walk-in Guest"}
+                        </td>
 
-                      <td style={{ padding: "16px 20px", fontSize: "14px", color: "var(--rc-text-body)" }}>
-                        {item.mobile || "—"}
-                      </td>
+                        <td style={{ padding: "16px 20px", fontSize: "14px", color: "var(--rc-text-body)" }}>
+                          {item.mobile || "—"}
+                        </td>
 
-                      <td style={{ padding: "16px 20px" }}>
-                        <span
-                          style={{
-                            padding: "4px 10px",
-                            borderRadius: "9999px",
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            background: item.clicked ? "#f1f5f9" : "var(--rc-blue-50)",
-                            color: item.clicked ? "var(--rc-text-muted)" : "var(--rc-blue-600)",
-                            border: `1px solid ${item.clicked ? "#e2e8f0" : "var(--rc-blue-200)"}`,
-                          }}
-                        >
-                          {item.clicked ? "✓ Called / Served" : "● Waiting"}
-                        </span>
-                      </td>
+                        <td style={{ padding: "16px 20px" }}>
+                          {item.clicked ? (
+                            <span
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: "9999px",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                background: "#f1f5f9",
+                                color: "var(--rc-text-muted)",
+                                border: "1px solid #e2e8f0",
+                              }}
+                            >
+                              ✓ Called / Served
+                            </span>
+                          ) : isAlerted ? (
+                            <span
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: "9999px",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                background: "#ecfdf5",
+                                color: "#047857",
+                                border: "1px solid #a7f3d0",
+                              }}
+                            >
+                              🔔 Approaching SMS Sent
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: "9999px",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                background: "var(--rc-blue-50)",
+                                color: "var(--rc-blue-600)",
+                                border: "1px solid var(--rc-blue-200)",
+                              }}
+                            >
+                              ● Waiting in Line
+                            </span>
+                          )}
+                        </td>
 
-                      <td style={{ padding: "16px 20px", textAlign: "right" }}>
-                        <Button
-                          variant={item.clicked ? "outline" : "primary"}
-                          size="sm"
-                          onClick={() => handleCallCustomer(index)}
-                          icon={
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
-                            </svg>
-                          }
-                        >
-                          {item.clicked ? "Call Again" : "Call Customer"}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                        <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                          <div style={{ display: "inline-flex", gap: "8px", alignItems: "center" }}>
+                            {/* Manual SMS Trigger */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSendManualAlert(item)}
+                              title="Send approaching template SMS alert manually"
+                              icon={
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                </svg>
+                              }
+                            >
+                              {isAlerted ? "SMS Sent" : "Alert SMS"}
+                            </Button>
+
+                            {/* Call Customer Button */}
+                            <Button
+                              variant={item.clicked ? "secondary" : "primary"}
+                              size="sm"
+                              onClick={() => handleCallCustomer(index)}
+                              icon={
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                                </svg>
+                              }
+                            >
+                              {item.clicked ? "Call Again" : "Call Customer"}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

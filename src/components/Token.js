@@ -9,8 +9,12 @@ import "./Token.css";
 function Token() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [token, setToken] = useState(localStorage.getItem("token") || null);
+  const [token, setToken] = useState(
+    localStorage.getItem("queueToken") || localStorage.getItem("token") || null
+  );
   const [loading, setLoading] = useState(!token);
+  const userRole = (localStorage.getItem("role") || "").toLowerCase().trim();
+  const isStaff = ["shop admin", "shopadmin", "shop", "admin", "superadmin"].includes(userRole);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -20,7 +24,7 @@ function Token() {
         const response = await axios.get(`${apiBase}/api/get-token?phone=${phone}`);
         if (response.data?.token) {
           setToken(response.data.token);
-          localStorage.setItem("token", String(response.data.token));
+          localStorage.setItem("queueToken", String(response.data.token));
         }
       } catch (error) {
         console.error("Error fetching token:", error);
@@ -50,7 +54,7 @@ function Token() {
           <div className="rc-token-orb">
             <span className="rc-token-tag">TOKEN NO.</span>
             <span className="rc-token-number">
-              {loading ? "..." : token ? `#${token}` : "#101"}
+              {loading ? "..." : token ? `#${token}` : "#1"}
             </span>
           </div>
         </div>
@@ -62,7 +66,7 @@ function Token() {
           </svg>
           <div>
             <strong>SMS Notification Active</strong>
-            <p>You will receive an SMS alert as soon as your counter slot is called.</p>
+            <p>You will receive an automatic SMS alert when your counter slot is approaching!</p>
           </div>
         </div>
 
@@ -70,27 +74,28 @@ function Token() {
           <Button
             variant="primary"
             size="lg"
-            onClick={() => navigate(`/${id}/counter`)}
+            onClick={() => navigate(`/${id}/countdown`)}
             style={{ width: "100%" }}
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                <line x1="8" y1="21" x2="16" y2="21" />
-                <line x1="12" y1="17" x2="12" y2="21" />
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
               </svg>
             }
           >
-            Track Live Counter Queue
+            Open Live Service Countdown
           </Button>
 
-          <Button
-            variant="outline"
-            size="md"
-            onClick={() => navigate(`/${id}/countdown`)}
-            style={{ width: "100%", marginTop: "8px" }}
-          >
-            Open Live Countdown Timer
-          </Button>
+          {isStaff && (
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => navigate(`/${id}/counter`)}
+              style={{ width: "100%", marginTop: "8px" }}
+            >
+              Staff: Open Live Counter Queue
+            </Button>
+          )}
         </div>
       </div>
     </div>
