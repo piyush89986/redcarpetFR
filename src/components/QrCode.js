@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -40,25 +40,8 @@ const QRGenerator = () => {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  // Fetch all malls on mount
-  useEffect(() => {
-    axios
-      .get(`${apiBase}/api/shops`)
-      .then((res) => {
-        const validShops = (res.data || []).filter((s) => s.title);
-        setShops(validShops);
-        if (validShops.length > 0) {
-          const firstMall =
-            validShops.find((s) => s._id === "6adcc3b558d7c3fef67b302f") ||
-            validShops[0];
-          loadMallQR(firstMall._id);
-        }
-      })
-      .catch((err) => console.log("Failed to fetch malls for QR:", err.message));
-  }, [apiBase]);
-
   // Load a mall and fetch its saved QR settings from DB
-  const loadMallQR = async (mallId) => {
+  const loadMallQR = useCallback(async (mallId) => {
     setSelectedMallId(mallId);
     setIsDropdownOpen(false);
     setSearchQuery("");
@@ -80,7 +63,24 @@ const QRGenerator = () => {
     } catch (err) {
       console.log("No custom QR saved yet, using default welcome page:", err.message);
     }
-  };
+  }, [apiBase]);
+
+  // Fetch all malls on mount
+  useEffect(() => {
+    axios
+      .get(`${apiBase}/api/shops`)
+      .then((res) => {
+        const validShops = (res.data || []).filter((s) => s.title);
+        setShops(validShops);
+        if (validShops.length > 0) {
+          const firstMall =
+            validShops.find((s) => s._id === "6adcc3b558d7c3fef67b302f") ||
+            validShops[0];
+          loadMallQR(firstMall._id);
+        }
+      })
+      .catch((err) => console.log("Failed to fetch malls for QR:", err.message));
+  }, [apiBase, loadMallQR]);
 
   // Save current QR settings to Database
   const handleSaveToDb = async () => {
