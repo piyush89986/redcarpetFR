@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { QrCode, Clock, ShoppingBag } from "lucide-react";
+import { QrCode, Bell } from "lucide-react";
 import { Button } from "./common";
 import API_BASE from "../apiConfig";
 import "./common/common.css";
@@ -83,50 +83,11 @@ const PaymentPage = ({ amount = 120 }) => {
 
             <div className="rc-step-card">
               <div className="rc-step-card-icon">
-                <Clock size={22} />
+                <Bell size={22} />
               </div>
               <div className="rc-step-card-content">
-                <h3>Book Time Slot</h3>
-                <p>Choose your preferred billing time</p>
-              </div>
-            </div>
-
-            <div className="rc-step-card">
-              <div className="rc-step-card-icon">
-                <ShoppingBag size={22} />
-              </div>
-              <div className="rc-step-card-content">
-                <h3>Priority Checkout</h3>
-                <p>Skip the line with priority billing &amp; concierge cart</p>
-              </div>
-            </div>
-          </div>
-
-          {/* What You Get / Benefits */}
-          <div className="rc-benefits-box">
-            <h3 className="rc-benefits-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-              What You Get
-            </h3>
-            <div className="rc-benefits-list">
-              <div className="rc-benefit-row">
-                <span className="rc-benefit-check">✓</span>
-                <span>SMS notifications for your turn</span>
-              </div>
-              <div className="rc-benefit-row">
-                <span className="rc-benefit-check">✓</span>
-                <span>Dedicated Blue Cart concierge access</span>
-              </div>
-              <div className="rc-benefit-row">
-                <span className="rc-benefit-check">✓</span>
-                <span>Digital receipt &amp; token for easy tracking</span>
-              </div>
-              <div className="rc-benefit-row">
-                <span className="rc-benefit-check">✓</span>
-                <span>24/7 customer support &amp; counter assistance</span>
+                <h3>SMS Arrival Alert</h3>
+                <p>SMS informs you when your number has arrived</p>
               </div>
             </div>
           </div>

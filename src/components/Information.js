@@ -69,7 +69,7 @@ function Information() {
       return;
     }
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!cleanEmail || !emailPattern.test(cleanEmail)) {
+    if (cleanEmail && !emailPattern.test(cleanEmail)) {
       setErrorMsg("Please enter a valid email address.");
       return;
     }
@@ -261,7 +261,7 @@ function Information() {
               </div>
 
               <div className="rc-form-group">
-                <label className="rc-label">Email Address *</label>
+                <label className="rc-label">Email Address (Optional)</label>
                 <div className="rc-input-icon-wrap">
                   <span className="rc-input-icon">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -273,28 +273,11 @@ function Information() {
                     type="email"
                     id="email"
                     name="email"
-                    placeholder="name@example.com"
+                    placeholder="name@example.com (optional)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="rc-input rc-input-with-icon"
-                    required
                   />
-                </div>
-              </div>
-
-              {/* VIP Perks */}
-              <div className="rc-perks-row">
-                <div className="rc-perk-item">
-                  <span className="rc-perk-icon">⚡</span>
-                  <span>Zero Queue Waiting</span>
-                </div>
-                <div className="rc-perk-item">
-                  <span className="rc-perk-icon">🛍️</span>
-                  <span>Dedicated Blue Cart</span>
-                </div>
-                <div className="rc-perk-item">
-                  <span className="rc-perk-icon">📲</span>
-                  <span>SMS Status Alerts</span>
                 </div>
               </div>
 

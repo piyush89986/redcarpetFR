@@ -156,11 +156,8 @@ const Countdown = () => {
         )}
 
         <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
-          <Button variant="secondary" onClick={() => navigate(-1)}>
-            Back
-          </Button>
-          <Button variant="primary" onClick={() => navigate("/branddashboard")}>
-            Browse Malls
+          <Button variant="primary" onClick={() => navigate(-1)}>
+            Return to VIP Pass
           </Button>
         </div>
       </div>

@@ -10,12 +10,10 @@ function Token() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [token, setToken] = useState(
-    localStorage.getItem("queueToken") || localStorage.getItem("token") || null
+    localStorage.getItem("queueToken") || null
   );
   const [loading, setLoading] = useState(!token);
   const [shopDetails, setShopDetails] = useState(null);
-  const userRole = (localStorage.getItem("role") || "").toLowerCase().trim();
-  const isStaff = ["shop admin", "shopadmin", "shop", "admin", "superadmin"].includes(userRole);
 
   useEffect(() => {
     if (!id) return;
@@ -97,16 +95,7 @@ function Token() {
             Open Live Service Countdown
           </Button>
 
-          {isStaff && (
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => navigate(`/${id}/counter`)}
-              style={{ width: "100%", marginTop: "8px" }}
-            >
-              Staff: Open Live Counter Queue
-            </Button>
-          )}
+
         </div>
       </div>
     </div>

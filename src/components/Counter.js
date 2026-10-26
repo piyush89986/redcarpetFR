@@ -27,13 +27,20 @@ const Counter = () => {
 
   const apiBase = API_BASE;
   const rawRole = (localStorage.getItem("role") || "").toLowerCase().trim();
-  const userRole = rawRole || "admin";
+  const userRole = rawRole;
   const storedShopId = localStorage.getItem("shopId");
 
   // Scoped Access Control:
+  // 0. Only authenticated staff can view the Live Counter
   // 1. Shop Admin can only access their own store's live counter
   // 2. Mall Admin can only access counters within their own mall
   useEffect(() => {
+    if (!rawRole || !["admin", "superadmin", "shop admin", "shopadmin", "shop"].includes(rawRole)) {
+      console.warn("Access Denied: Unauthenticated user attempted to access staff counter queue.");
+      navigate("/", { replace: true });
+      return;
+    }
+
     if (
       (rawRole === "shop admin" || rawRole === "shopadmin" || rawRole === "shop") &&
       storedShopId &&
@@ -161,7 +168,7 @@ const Counter = () => {
         searchPlaceholder="Search token #, customer, mobile..."
         actions={
           <>
-            {userRole !== "shop admin" && userRole !== "shopadmin" && userRole !== "shop" && (
+            {(userRole === "admin" || userRole === "superadmin") && (
               <Button
                 variant="outline"
                 size="sm"
