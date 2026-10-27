@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Button from "./Button";
+import { useAppDispatch, useAppSelector, logout } from "../../redux";
 import "./common.css";
 
 const Navbar = ({
@@ -13,17 +14,16 @@ const Navbar = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useAppDispatch();
+  const auth = useAppSelector((state) => state.auth);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("shopId");
-    localStorage.removeItem("isAuthenticated");
+    dispatch(logout());
     navigate("/");
   };
 
-  const userRole = (localStorage.getItem("role") || "").toLowerCase().trim();
-  const userShopId = localStorage.getItem("shopId") || "";
+  const userRole = (auth?.role || localStorage.getItem("role") || "").toLowerCase().trim();
+  const userShopId = auth?.shopId || localStorage.getItem("shopId") || "";
 
   const handleBrandClick = () => {
     if (userRole === "superadmin") {

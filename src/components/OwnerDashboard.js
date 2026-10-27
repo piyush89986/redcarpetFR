@@ -3,14 +3,25 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Navbar, Button, StatCard, Modal, SkeletonMallGrid } from "./common";
 import API_BASE from "../apiConfig";
+import { useAppDispatch, useAppSelector, fetchMalls, toggleSubscription } from "../redux";
 import "./common/common.css";
 
 const OwnerDashboard = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { malls: reduxMalls } = useAppSelector((state) => state.malls);
+
   const [search, setSearch] = useState("");
-  const [shops, setFoods] = useState([]);
+  const [shops, setFoods] = useState(reduxMalls || []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync local state when Redux store updates
+  useEffect(() => {
+    if (reduxMalls && reduxMalls.length > 0) {
+      setFoods(reduxMalls);
+    }
+  }, [reduxMalls]);
 
   const initialFormState = {
     title: "",
@@ -29,16 +40,12 @@ const OwnerDashboard = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    axios
-      .get(`${apiBase}/api/shops`)
-      .then((res) => {
-        setFoods(res.data || []);
-      })
-      .catch((err) => {
-        console.error("Error fetching shops:", err);
-      })
+    dispatch(fetchMalls())
+      .unwrap()
+      .then((data) => setFoods(data || []))
+      .catch((err) => console.error("Error fetching shops via Redux:", err))
       .finally(() => setIsLoading(false));
-  }, [apiBase]);
+  }, [dispatch]);
 
   const role = (localStorage.getItem("role") || "").toLowerCase().trim();
   const shopId = localStorage.getItem("shopId");
@@ -136,14 +143,9 @@ const OwnerDashboard = () => {
     );
 
     try {
-      const res = await axios.patch(`${apiBase}/api/shops/${shopId}/subscription`, {
-        subscriptionStatus: nextStatus,
-      });
-      if (res.data?.shop) {
-        setFoods((prev) =>
-          prev.map((s) => (s._id === shopId ? { ...s, ...res.data.shop } : s))
-        );
-      }
+      await dispatch(
+        toggleSubscription({ mallId: shopId, subscriptionStatus: nextStatus })
+      ).unwrap();
     } catch (err) {
       console.error("Subscription update error:", err);
       // Revert if error

@@ -3,11 +3,13 @@ import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar, Button, StatCard, SkeletonQueueTable } from "./common";
 import API_BASE from "../apiConfig";
+import { useAppDispatch, setQueueData as setReduxQueueData, setShopInfo as setReduxShopInfo } from "../redux";
 import "./common/common.css";
 
 const Counter = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [data, setData] = useState([]);
   const [shopInfo, setShopInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -65,9 +67,12 @@ const Counter = () => {
     if (!id) return;
     axios
       .get(`${apiBase}/api/shops/${id}`)
-      .then((res) => setShopInfo(res.data))
+      .then((res) => {
+        setShopInfo(res.data);
+        dispatch(setReduxShopInfo(res.data));
+      })
       .catch((err) => console.log("Notice: shop info not loaded:", err.message));
-  }, [id, apiBase]);
+  }, [id, apiBase, dispatch]);
 
   // Fetch real-time queue data from API
   const fetchData = useCallback(async () => {
@@ -85,12 +90,13 @@ const Counter = () => {
       }));
 
       setData(fetchedData);
+      dispatch(setReduxQueueData(fetchedData));
       setLoading(false);
     } catch (error) {
       console.error("Error fetching queue data:", error);
       setLoading(false);
     }
-  }, [id, apiBase]);
+  }, [id, apiBase, dispatch]);
 
   useEffect(() => {
     fetchData();

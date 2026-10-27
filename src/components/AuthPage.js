@@ -4,9 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
 import { Button } from "./common";
 import API_BASE from "../apiConfig";
+import { useAppDispatch, setCredentials } from "../redux";
 import "./common/common.css";
 
 const AuthPage = () => {
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,9 +64,15 @@ const AuthPage = () => {
       const userRole = (res.data.role || res.data.user?.role || "admin").toLowerCase().trim();
       const userShopId = res.data.shopId || "";
 
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("role", userRole);
-      localStorage.setItem("shopId", userShopId);
+      // Update Redux Store
+      dispatch(
+        setCredentials({
+          token: res.data.token,
+          role: userRole,
+          shopId: userShopId,
+          user: res.data.user || null,
+        })
+      );
 
       if (userRole === "superadmin") {
         navigate("/ownerdashboard");
