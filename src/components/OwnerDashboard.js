@@ -129,18 +129,28 @@ const OwnerDashboard = () => {
 
   const handleToggleSubscription = async (shopId, currentStatus) => {
     const nextStatus = currentStatus === "inactive" ? "active" : "inactive";
+
+    // Optimistically update the UI immediately
+    setFoods((prev) =>
+      prev.map((s) => (s._id === shopId ? { ...s, subscriptionStatus: nextStatus } : s))
+    );
+
     try {
       const res = await axios.patch(`${apiBase}/api/shops/${shopId}/subscription`, {
         subscriptionStatus: nextStatus,
       });
-      if (res.data?.success) {
-        setFoods(
-          shops.map((s) => (s._id === shopId ? { ...s, subscriptionStatus: nextStatus } : s))
+      if (res.data?.shop) {
+        setFoods((prev) =>
+          prev.map((s) => (s._id === shopId ? { ...s, ...res.data.shop } : s))
         );
       }
     } catch (err) {
       console.error("Subscription update error:", err);
-      alert("Failed to update subscription status.");
+      // Revert if error
+      setFoods((prev) =>
+        prev.map((s) => (s._id === shopId ? { ...s, subscriptionStatus: currentStatus } : s))
+      );
+      alert("Failed to update subscription status. Please make sure the backend is updated.");
     }
   };
 
@@ -273,10 +283,10 @@ const OwnerDashboard = () => {
                   <div
                     className="rc-card-badge"
                     style={{
-                      background: shop.subscriptionStatus === "inactive" ? "#ef4444" : "var(--rc-blue-600)",
+                      background: shop.subscriptionStatus === "inactive" ? "#ef4444" : "#10b981",
                     }}
                   >
-                    {shop.subscriptionStatus === "inactive" ? "● Paused" : "● Active Premium"}
+                    {shop.subscriptionStatus === "inactive" ? "● Expired" : "● Active"}
                   </div>
                 </div>
 
@@ -310,12 +320,94 @@ const OwnerDashboard = () => {
                     )}
                   </div>
 
+                  {/* Subscription ON/OFF Switch */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      background: shop.subscriptionStatus === "inactive" ? "#fef2f2" : "#f0fdf4",
+                      border: `1px solid ${shop.subscriptionStatus === "inactive" ? "#fecaca" : "#bbf7d0"}`,
+                      borderRadius: "10px",
+                      margin: "4px 0 12px 0",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: "8px",
+                          height: "8px",
+                          borderRadius: "50%",
+                          background: shop.subscriptionStatus === "inactive" ? "#ef4444" : "#10b981",
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          color: shop.subscriptionStatus === "inactive" ? "#991b1b" : "#166534",
+                        }}
+                      >
+                        {shop.subscriptionStatus === "inactive" ? "Subscription: OFF (Expired)" : "Subscription: ON (Active)"}
+                      </span>
+                    </div>
+
+                    <label
+                      style={{
+                        position: "relative",
+                        display: "inline-block",
+                        width: "44px",
+                        height: "24px",
+                        cursor: "pointer",
+                        margin: 0,
+                      }}
+                      title="Toggle Subscription ON / OFF"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={shop.subscriptionStatus !== "inactive"}
+                        onChange={() => handleToggleSubscription(shop._id, shop.subscriptionStatus)}
+                        style={{ opacity: 0, width: 0, height: 0, position: "absolute" }}
+                      />
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: shop.subscriptionStatus !== "inactive" ? "#10b981" : "#cbd5e1",
+                          borderRadius: "24px",
+                          transition: "all 0.25s ease",
+                          boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)",
+                        }}
+                      >
+                        <span
+                          style={{
+                            position: "absolute",
+                            content: '""',
+                            height: "18px",
+                            width: "18px",
+                            left: shop.subscriptionStatus !== "inactive" ? "22px" : "3px",
+                            bottom: "3px",
+                            backgroundColor: "#ffffff",
+                            borderRadius: "50%",
+                            transition: "all 0.25s ease",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                          }}
+                        />
+                      </span>
+                    </label>
+                  </div>
+
                   {/* Action Buttons */}
                   <div className="rc-card-actions" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                     <Button
                       variant="primary"
                       size="sm"
-                      style={{ flex: "1 1 calc(50% - 4px)" }}
+                      style={{ flex: "1 1 100%" }}
                       onClick={() => navigate(`/branddashboard2/${shop._id}`)}
                       icon={
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -329,25 +421,17 @@ const OwnerDashboard = () => {
                     </Button>
 
                     <Button
-                      variant={shop.subscriptionStatus === "inactive" ? "primary" : "outline"}
-                      size="sm"
-                      style={{
-                        flex: "1 1 calc(50% - 4px)",
-                        borderColor: shop.subscriptionStatus === "inactive" ? undefined : "#ef4444",
-                        color: shop.subscriptionStatus === "inactive" ? undefined : "#ef4444",
-                      }}
-                      onClick={() => handleToggleSubscription(shop._id, shop.subscriptionStatus)}
-                      title="Superadmin subscription access control"
-                    >
-                      {shop.subscriptionStatus === "inactive" ? "Activate Plan" : "Pause Plan"}
-                    </Button>
-
-                    <Button
                       variant="secondary"
                       size="sm"
                       style={{ flex: "1 1 calc(50% - 4px)" }}
                       onClick={() => openEditModal(shop)}
                       title="Edit Mall Details"
+                      icon={
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      }
                     >
                       Edit
                     </Button>
@@ -358,6 +442,14 @@ const OwnerDashboard = () => {
                       style={{ flex: "1 1 calc(50% - 4px)" }}
                       onClick={() => handleDelete(shop._id, shop.title)}
                       title="Delete Mall"
+                      icon={
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <line x1="10" y1="11" x2="10" y2="17" />
+                          <line x1="14" y1="11" x2="14" y2="17" />
+                        </svg>
+                      }
                     >
                       Delete
                     </Button>

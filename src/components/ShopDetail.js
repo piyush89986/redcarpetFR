@@ -154,6 +154,131 @@ const ShopDetail = () => {
       )
     : [];
 
+  // If subscription is expired/inactive, block mall dashboard and show expired page
+  if (shop && shop.subscriptionStatus === "inactive") {
+    return (
+      <div className="rc-page-container" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f8fafc" }}>
+        <Navbar brandBadge="Subscription Notice" />
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+          <div
+            style={{
+              maxWidth: "520px",
+              width: "100%",
+              background: "#ffffff",
+              borderRadius: "24px",
+              padding: "48px 36px",
+              textAlign: "center",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.08)",
+              border: "1px solid #fee2e2",
+            }}
+          >
+            <div
+              style={{
+                width: "84px",
+                height: "84px",
+                borderRadius: "50%",
+                background: "#fef2f2",
+                color: "#ef4444",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 24px auto",
+                boxShadow: "0 10px 25px rgba(239, 68, 68, 0.15)",
+              }}
+            >
+              <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+              </svg>
+            </div>
+
+            <span
+              style={{
+                display: "inline-block",
+                background: "#fee2e2",
+                color: "#991b1b",
+                padding: "6px 16px",
+                borderRadius: "20px",
+                fontSize: "12px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                marginBottom: "16px",
+              }}
+            >
+              Account Suspended
+            </span>
+
+            <h1
+              style={{
+                fontSize: "28px",
+                fontWeight: 800,
+                color: "#0f172a",
+                margin: "0 0 12px 0",
+                letterSpacing: "-0.5px",
+              }}
+            >
+              Your Subscription Has Expired
+            </h1>
+
+            <p
+              style={{
+                fontSize: "15px",
+                color: "#64748b",
+                lineHeight: "1.6",
+                margin: "0 0 28px 0",
+              }}
+            >
+              Access to <strong>{shop.title || "this mall"}</strong> and its active counter queues has been paused by platform administration.
+            </p>
+
+            <div
+              style={{
+                padding: "16px 20px",
+                background: "#f8fafc",
+                borderRadius: "14px",
+                border: "1px solid #e2e8f0",
+                fontSize: "13px",
+                color: "#475569",
+                marginBottom: "28px",
+                textAlign: "left",
+                lineHeight: "1.5",
+              }}
+            >
+              <div style={{ fontWeight: 700, color: "#1e293b", marginBottom: "4px" }}>
+                Need to reactivate your account?
+              </div>
+              Please contact the RedCarpet administration team or renew your monthly subscription to resume full service.
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              {userRole === "superadmin" ? (
+                <Button
+                  variant="primary"
+                  onClick={() => navigate("/ownerdashboard")}
+                  style={{ padding: "12px 24px" }}
+                >
+                  SuperAdmin Dashboard
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    localStorage.clear();
+                    navigate("/");
+                  }}
+                  style={{ padding: "12px 24px" }}
+                >
+                  Logout
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rc-page-container">
       {/* Reusable Navbar */}
@@ -370,6 +495,12 @@ const ShopDetail = () => {
                       variant="secondary"
                       size="sm"
                       onClick={() => openEditModal(item)}
+                      icon={
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      }
                     >
                       Edit
                     </Button>
@@ -378,6 +509,14 @@ const ShopDetail = () => {
                       size="sm"
                       style={{ gridColumn: "1 / -1" }}
                       onClick={() => handleDelete(item)}
+                      icon={
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <line x1="10" y1="11" x2="10" y2="17" />
+                          <line x1="14" y1="11" x2="14" y2="17" />
+                        </svg>
+                      }
                     >
                       Delete Store
                     </Button>

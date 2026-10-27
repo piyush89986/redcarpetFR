@@ -158,6 +158,84 @@ const Counter = () => {
   const waitingCount = data.filter((d) => !d.clicked).length;
   const calledCount = data.filter((d) => d.clicked).length;
 
+  if (shopInfo && shopInfo.subscriptionStatus === "inactive") {
+    return (
+      <div className="rc-page-container" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f8fafc" }}>
+        <Navbar brandBadge="Counter Notice" />
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+          <div
+            style={{
+              maxWidth: "520px",
+              width: "100%",
+              background: "#ffffff",
+              borderRadius: "24px",
+              padding: "48px 36px",
+              textAlign: "center",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.08)",
+              border: "1px solid #fee2e2",
+            }}
+          >
+            <div
+              style={{
+                width: "84px",
+                height: "84px",
+                borderRadius: "50%",
+                background: "#fef2f2",
+                color: "#ef4444",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 24px auto",
+                boxShadow: "0 10px 25px rgba(239, 68, 68, 0.15)",
+              }}
+            >
+              <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+              </svg>
+            </div>
+
+            <span
+              style={{
+                display: "inline-block",
+                background: "#fee2e2",
+                color: "#991b1b",
+                padding: "6px 16px",
+                borderRadius: "20px",
+                fontSize: "12px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                marginBottom: "16px",
+              }}
+            >
+              Queue Paused
+            </span>
+
+            <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: "0 0 12px 0" }}>
+              Your Subscription Has Expired
+            </h1>
+
+            <p style={{ fontSize: "15px", color: "#64748b", lineHeight: "1.6", margin: "0 0 28px 0" }}>
+              Live counter queues for <strong>{shopInfo.title || shopInfo.name || "this location"}</strong> are currently paused because the platform subscription has expired.
+            </p>
+
+            <Button
+              variant="outline"
+              onClick={() => {
+                localStorage.clear();
+                navigate("/");
+              }}
+              style={{ padding: "12px 24px" }}
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rc-page-container">
       {/* Reusable White & Blue Navbar */}
