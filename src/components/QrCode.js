@@ -86,7 +86,11 @@ const QRGenerator = () => {
     return targets;
   }, [shopsData, userRole, userShopId]);
 
-  const BASE_QR_URL = "https://redcarpet-fr-git-main-piyush-singh-tanwar-s-projects.vercel.app";
+  const BASE_QR_URL =
+    process.env.REACT_APP_FRONTEND_URL ||
+    (typeof window !== "undefined" && window.location.origin && !window.location.origin.includes("localhost")
+      ? window.location.origin
+      : "https://redcarpet-fr.vercel.app");
 
   // Load a target's saved QR settings from DB
   const loadTargetQR = useCallback(
@@ -106,7 +110,11 @@ const QRGenerator = () => {
         const res = await axios.get(`${apiBase}/api/qrcode/${targetId}`);
         if (res.data?.success && res.data.data?.qrUrl) {
           let url = res.data.data.qrUrl;
-          if (url.includes("localhost") || url.includes("127.0.0.1")) {
+          if (
+            url.includes("localhost") ||
+            url.includes("127.0.0.1") ||
+            url.includes("git-main-piyush-singh-tanwar-s-projects")
+          ) {
             url = `${BASE_QR_URL}/${targetId}`;
           }
           setText(url);

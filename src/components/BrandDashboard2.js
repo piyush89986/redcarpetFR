@@ -82,7 +82,11 @@ const BrandDashboard2 = () => {
         menuItem.description?.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [];
 
-  const BASE_QR_URL = "https://redcarpet-fr-git-main-piyush-singh-tanwar-s-projects.vercel.app";
+  const BASE_QR_URL =
+    process.env.REACT_APP_FRONTEND_URL ||
+    (typeof window !== "undefined" && window.location.origin && !window.location.origin.includes("localhost")
+      ? window.location.origin
+      : "https://redcarpet-fr.vercel.app");
 
   // Open Direct QR Assignment Modal
   const openQrModal = async (item) => {
@@ -95,7 +99,11 @@ const BrandDashboard2 = () => {
       const res = await axios.get(`${API_BASE}/api/qrcode/${item._id}`);
       if (res.data?.success && res.data.data?.qrUrl) {
         let url = res.data.data.qrUrl;
-        if (url.includes("localhost") || url.includes("127.0.0.1")) {
+        if (
+          url.includes("localhost") ||
+          url.includes("127.0.0.1") ||
+          url.includes("git-main-piyush-singh-tanwar-s-projects")
+        ) {
           url = `${BASE_QR_URL}/${item._id}`;
         }
         setAssignedQrUrl(url);
