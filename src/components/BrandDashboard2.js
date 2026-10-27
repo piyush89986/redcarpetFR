@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { QRCodeCanvas } from "qrcode.react";
-import { Navbar, Button, StatCard, Modal } from "./common";
+import { Navbar, Button, StatCard, Modal, SkeletonBrandGrid } from "./common";
 import API_BASE from "../apiConfig";
 import "./common/common.css";
 
@@ -555,9 +555,7 @@ const BrandDashboard2 = () => {
 
         {/* Brands Grid */}
         {isLoading ? (
-          <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--rc-blue-600)" }}>
-            <p style={{ fontWeight: 600 }}>Loading brand directory...</p>
-          </div>
+          <SkeletonBrandGrid count={6} />
         ) : filteredMenuItems.length === 0 ? (
           <div
             style={{

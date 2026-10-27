@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
-import { Navbar, Button, StatCard } from "./common";
+import { Navbar, Button, StatCard, SkeletonQueueTable } from "./common";
 import API_BASE from "../apiConfig";
 import "./common/common.css";
 
@@ -495,9 +495,7 @@ const Counter = () => {
 
         {/* Queue Table */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--rc-blue-600)" }}>
-            <p style={{ fontWeight: 600 }}>Loading live queue...</p>
-          </div>
+          <SkeletonQueueTable rows={6} />
         ) : filteredQueue.length === 0 ? (
           <div
             style={{

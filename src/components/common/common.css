@@ -740,3 +740,35 @@
     display: none !important;
   }
 }
+
+/* =========================================================
+   Skeleton Screen & Shimmer Animations
+   ========================================================= */
+@keyframes rcShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.rc-skeleton {
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 0%,
+    #e2e8f0 40%,
+    #cbd5e1 50%,
+    #e2e8f0 60%,
+    #f1f5f9 100%
+  );
+  background-size: 200% 100%;
+  animation: rcShimmer 1.8s ease-in-out infinite;
+  display: block;
+}
+
+.rc-skeleton-card {
+  pointer-events: none;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+}

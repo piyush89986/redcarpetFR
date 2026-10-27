@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { Navbar, Button, StatCard, Modal } from "./common";
+import { Navbar, Button, StatCard, Modal, SkeletonMallGrid } from "./common";
 import API_BASE from "../apiConfig";
 import "./common/common.css";
 
@@ -234,10 +234,7 @@ const OwnerDashboard = () => {
 
         {/* Mall Cards Grid */}
         {isLoading ? (
-          <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--rc-blue-600)" }}>
-            <div style={{ fontSize: "28px", marginBottom: "12px" }}>⏳</div>
-            <p style={{ fontWeight: 600 }}>Loading malls and complexes...</p>
-          </div>
+          <SkeletonMallGrid count={6} />
         ) : filteredShops.length === 0 ? (
           <div
             style={{
