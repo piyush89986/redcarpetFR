@@ -24,6 +24,7 @@ const AppRoutes = () => {
       <Routes>
         <Route path="/" element={<AppLayout />}>
           <Route index element={<AuthPage />} />
+          <Route path="/login" element={<AuthPage />} />
 
           {/* SuperAdmin Platform Routes */}
           <Route element={<ProtectedRoute allowedRoles={["superadmin"]} />}>
