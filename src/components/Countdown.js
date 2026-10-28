@@ -60,7 +60,7 @@ const Countdown = () => {
       </div>
 
       {/* Main Glass Card */}
-      <div className="relative z-10 w-full max-w-lg bg-white/5 border border-white/10 backdrop-blur-xl rounded-[36px] p-8 sm:p-12 text-center shadow-2xl">
+      <div className="relative z-10 w-full max-w-lg bg-white/5 border border-white/10 backdrop-blur-xl rounded-[28px] sm:rounded-[36px] p-6 sm:p-10 text-center shadow-2xl">
         {/* Brand Pill */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-600/15 text-red-400 text-xs font-black uppercase tracking-wider border border-red-600/25 shadow-2xs mb-6">
           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -71,7 +71,7 @@ const Countdown = () => {
           {showMessage ? "Your Turn Is Complete" : "Please Proceed to Counter"}
         </h1>
 
-        <p className="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-sm mx-auto mb-8">
+        <p className="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-sm mx-auto mb-6 sm:mb-8">
           {showMessage
             ? "Thank you for visiting RedCarpet. Have a wonderful day!"
             : "Your token has been called on screen. Please approach your counter during this window:"}
@@ -80,16 +80,16 @@ const Countdown = () => {
         {/* Circular Timer Ring */}
         {!showMessage ? (
           <div
-            className="relative w-56 h-56 mx-auto mb-8 flex items-center justify-center rounded-full p-2.5 transition-all duration-1000 shadow-[0_0_40px_rgba(229,252,115,0.15)]"
+            className="relative w-48 h-48 sm:w-56 sm:h-56 mx-auto mb-6 sm:mb-8 flex items-center justify-center rounded-full p-2.5 transition-all duration-1000 shadow-[0_0_40px_rgba(229,252,115,0.15)]"
             style={{
               background: `conic-gradient(#e5fc73 ${progress * 3.6}deg, rgba(255, 255, 255, 0.08) 0deg)`,
             }}
           >
             <div className="w-full h-full bg-[#18191d] rounded-full flex flex-col items-center justify-center border border-white/10">
-              <span className="text-5xl font-black text-[#e5fc73] tracking-tight font-mono">
+              <span className="text-4xl sm:text-5xl font-black text-[#e5fc73] tracking-tight font-mono">
                 {formattedTime}
               </span>
-              <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mt-1">
+              <span className="text-[10px] sm:text-[11px] text-gray-400 font-bold uppercase tracking-wider mt-1">
                 Minutes : Seconds
               </span>
             </div>
