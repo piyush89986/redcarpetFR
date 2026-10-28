@@ -89,12 +89,6 @@ function Information() {
       return;
     }
 
-    // Special secret redirect for maintenance
-    if (cleanName === "itsoftlab" && cleanMobile === "6261822587") {
-      navigate(`/${id}/editdisplay`);
-      return;
-    }
-
     setLoading(true);
     try {
       const token = generateToken();
@@ -287,7 +281,7 @@ function Information() {
                 <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="e.g. Rahul Sharma"
+                  placeholder="Enter your full name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required

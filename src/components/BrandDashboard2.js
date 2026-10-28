@@ -133,8 +133,7 @@ const BrandDashboard2 = () => {
           let url = res.data.data.qrUrl;
           if (
             url.includes("localhost") ||
-            url.includes("127.0.0.1") ||
-            url.includes("git-main-piyush-singh-tanwar-s-projects")
+            url.includes("127.0.0.1")
           ) {
             url = `${BASE_QR_URL}/${item._id}`;
           }

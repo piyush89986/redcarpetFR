@@ -152,7 +152,7 @@ const PaymentPage = ({ amount = 120 }) => {
           </span>
 
           <div className="text-3xl sm:text-4xl font-black text-white font-mono tracking-tight">
-            ₹{amount}
+            ₹{mall?.conciergeFee || mall?.fee || amount}
           </div>
           <div className="text-xs font-bold text-gray-300 uppercase tracking-wider mt-1">
             One-Time Concierge Fee

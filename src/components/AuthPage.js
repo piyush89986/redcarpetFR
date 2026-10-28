@@ -80,12 +80,6 @@ const AuthPage = () => {
     }
   };
 
-  const fillQuickCredentials = (eMail, pass) => {
-    setEmail(eMail);
-    setPassword(pass);
-    setErrorMessage("");
-  };
-
   return (
     <div className="min-h-screen bg-white w-full flex flex-col lg:flex-row font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] selection:bg-[#e5fc73] selection:text-[#111]">
       {/* Left Brand Showcase Panel (Desktop) */}
@@ -237,38 +231,6 @@ const AuthPage = () => {
               <ArrowRight size={16} />
             </button>
           </form>
-
-          {/* Quick Demo Credentials Fill */}
-          <div className="mt-8 pt-6 border-t border-gray-100">
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2.5">
-              Quick One-Click Demo Access
-            </span>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials("admin@redcarpet.com", "admin123")}
-                className="px-3 py-1.5 rounded-full bg-gray-100 hover:bg-[#e5fc73] text-gray-800 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-              >
-                SuperAdmin
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials("manager@phoenixmall.com", "password123")}
-                className="px-3 py-1.5 rounded-full bg-gray-100 hover:bg-[#e5fc73] text-gray-800 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-              >
-                Mall Manager
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials("zara@phoenixmall.com", "password123")}
-                className="px-3 py-1.5 rounded-full bg-gray-100 hover:bg-[#e5fc73] text-gray-800 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-              >
-                Store / Shop Counter
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
