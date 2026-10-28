@@ -576,7 +576,7 @@ const BrandDashboard2 = () => {
       />
 
       {/* Help Modal */}
-      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} role="admin" />
 
       {/* Floating Toast Notification */}
       <Toast message={toastMessage} />

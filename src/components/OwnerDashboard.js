@@ -423,7 +423,7 @@ const OwnerDashboard = () => {
       />
 
       {/* Help & Guides Modal */}
-      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} role="superadmin" />
 
       {/* Reusable Toast Notification */}
       <Toast message={toastMessage} />

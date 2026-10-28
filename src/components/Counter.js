@@ -551,7 +551,7 @@ const Counter = () => {
       />
 
       {/* Help Modal */}
-      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} role="shop" />
 
       {/* Floating Toast Notification */}
       <Toast message={toastMessage} />
