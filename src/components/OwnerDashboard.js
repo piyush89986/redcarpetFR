@@ -1,55 +1,76 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { Navbar, Button, StatCard, Modal, SkeletonMallGrid } from "./common";
+import { Settings, Link2, RefreshCw, Building2 } from "lucide-react";
 import API_BASE from "../apiConfig";
 import { useAppDispatch, useAppSelector, fetchMalls, toggleSubscription } from "../redux";
-import "./common/common.css";
+
+// Reusable Modular Dashboard Components
+import DockSidebar from "./dashboard/DockSidebar";
+import TabsNav from "./dashboard/TabsNav";
+import SearchBar from "./dashboard/SearchBar";
+import MallCard from "./dashboard/MallCard";
+import MallModal from "./dashboard/MallModal";
+import ProfileModal from "./dashboard/ProfileModal";
+import HelpModal from "./dashboard/HelpModal";
+import Toast from "./dashboard/Toast";
+
+const TABS = ["All Complexes", "Active Subscriptions", "Inactive Malls", "Store Directors"];
 
 const OwnerDashboard = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { malls: reduxMalls } = useAppSelector((state) => state.malls);
 
-  const [search, setSearch] = useState("");
+  // Core Data & Filter States
   const [shops, setFoods] = useState(reduxMalls || []);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("All Complexes");
 
-  // Sync local state when Redux store updates
-  useEffect(() => {
-    if (reduxMalls && reduxMalls.length > 0) {
-      setFoods(reduxMalls);
-    }
-  }, [reduxMalls]);
+  // Layout & Navigation State
+  const [isDockCollapsed, setIsDockCollapsed] = useState(false);
+  const [activeDockItem, setActiveDockItem] = useState("home");
 
-  const initialFormState = {
-    title: "",
-    description: "",
-    image: "",
-    email: "",
-    password: "",
-    mallconpassword: "",
-    role: "superadmin",
-  };
+  // Modal Visibility States
+  const [modalConfig, setModalConfig] = useState({ isOpen: false, mall: null });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
-  const [newFood, setNewFood] = useState(initialFormState);
-  const [editFood, setEditFood] = useState(null);
-
-  const apiBase = API_BASE;
+  // Scroll animation state for collapsible header: triggers after scrolling past the 4th card
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    setIsLoading(true);
-    dispatch(fetchMalls())
-      .unwrap()
-      .then((data) => setFoods(data || []))
-      .catch((err) => console.error("Error fetching shops via Redux:", err))
-      .finally(() => setIsLoading(false));
-  }, [dispatch]);
+    const handleScroll = () => {
+      // Find 4th card in the grid (0-indexed: index 3)
+      const fourthCard = document.querySelector("[data-card-index='3']");
+      let collapseThreshold = 460; // fallback if fewer cards
 
-  const role = (localStorage.getItem("role") || "").toLowerCase().trim();
-  const shopId = localStorage.getItem("shopId");
+      if (fourthCard) {
+        const rect = fourthCard.getBoundingClientRect();
+        const cardAbsoluteTop = rect.top + window.scrollY;
+        // Trigger collapse when user scrolls past the 4th card
+        collapseThreshold = Math.max(300, cardAbsoluteTop - 80);
+      }
+
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > collapseThreshold) {
+        setIsScrolled(true);
+      } else if (currentScrollY < collapseThreshold - 120) {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Role Protection
   useEffect(() => {
+    const role = (localStorage.getItem("role") || "").toLowerCase().trim();
+    const shopId = localStorage.getItem("shopId");
     if (role && role !== "superadmin") {
       if (role === "admin" && shopId) {
         navigate(`/branddashboard2/${shopId}`, { replace: true });
@@ -59,532 +80,353 @@ const OwnerDashboard = () => {
         navigate("/", { replace: true });
       }
     }
-  }, [role, shopId, navigate]);
+  }, [navigate]);
 
-  const handleChange = (e) => {
-    setNewFood({ ...newFood, [e.target.name]: e.target.value });
-  };
-
-  const openAddModal = () => {
-    setEditFood(null);
-    setNewFood(initialFormState);
-    setIsModalOpen(true);
-  };
-
-  const openEditModal = (shop) => {
-    setEditFood(shop);
-    setNewFood({
-      title: shop.title || "",
-      description: shop.description || "",
-      image: shop.image || "",
-      email: shop.email || "",
-      password: "",
-      mallconpassword: "",
-      role: shop.role || "superadmin",
-    });
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditFood(null);
-    setNewFood(initialFormState);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (editFood) {
-      axios
-        .put(`${apiBase}/api/shops/${editFood._id}`, newFood)
-        .then((res) => {
-          setFoods(
-            shops.map((shop) => (shop._id === editFood._id ? res.data : shop))
-          );
-          closeModal();
-        })
-        .catch((err) => {
-          console.error("Error updating shop:", err);
-          alert("Failed to update mall: " + (err.response?.data?.message || err.message));
-        });
-    } else {
-      axios
-        .post(`${apiBase}/api/shops`, newFood)
-        .then((res) => {
-          setFoods([...shops, res.data]);
-          closeModal();
-        })
-        .catch((err) => {
-          console.error("Error creating shop:", err);
-          alert("Failed to add mall: " + (err.response?.data?.message || err.message));
-        });
+  // Sync when Redux updates
+  useEffect(() => {
+    if (reduxMalls && reduxMalls.length > 0) {
+      setFoods(reduxMalls);
     }
-  };
+  }, [reduxMalls]);
 
-  const handleDelete = (id, title) => {
-    if (window.confirm(`Are you sure you want to delete "${title || "this mall"}"?`)) {
-      axios
-        .delete(`${apiBase}/api/shops/${id}`)
-        .then(() => {
-          setFoods(shops.filter((shop) => shop._id !== id));
-        })
-        .catch((err) => {
-          console.error("Error deleting shop:", err);
-          alert("Failed to delete mall: " + (err.response?.data?.message || err.message));
-        });
-    }
-  };
+  // Initial Fetch
+  useEffect(() => {
+    setIsLoading(true);
+    dispatch(fetchMalls())
+      .unwrap()
+      .then((data) => setFoods(data || []))
+      .catch((err) => console.error("Error fetching shops:", err))
+      .finally(() => setIsLoading(false));
+  }, [dispatch]);
 
-  const handleToggleSubscription = async (shopId, currentStatus) => {
-    const nextStatus = currentStatus === "inactive" ? "active" : "inactive";
+  // Toast feedback helper
+  const showToast = useCallback((msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage("");
+    }, 3200);
+  }, []);
 
-    // Optimistically update the UI immediately
-    setFoods((prev) =>
-      prev.map((s) => (s._id === shopId ? { ...s, subscriptionStatus: nextStatus } : s))
-    );
+  // Refresh handler
+  const handleRefresh = useCallback(() => {
+    setIsLoading(true);
+    dispatch(fetchMalls())
+      .unwrap()
+      .then((data) => {
+        setFoods(data || []);
+        showToast("Malls synchronized from cloud");
+      })
+      .catch((err) => console.error("Error fetching malls:", err))
+      .finally(() => setIsLoading(false));
+  }, [dispatch, showToast]);
 
-    try {
-      await dispatch(
-        toggleSubscription({ mallId: shopId, subscriptionStatus: nextStatus })
-      ).unwrap();
-    } catch (err) {
-      console.error("Subscription update error:", err);
-      // Revert if error
+  // Toggle Subscription Handler (Optimistic with zero unnecessary full-screen re-renders)
+  const handleToggleSubscription = useCallback(
+    async (mallId, currentStatus) => {
+      const nextStatus = currentStatus === "inactive" ? "active" : "inactive";
+
+      // Optimistic local update
       setFoods((prev) =>
-        prev.map((s) => (s._id === shopId ? { ...s, subscriptionStatus: currentStatus } : s))
+        prev.map((s) => (s._id === mallId ? { ...s, subscriptionStatus: nextStatus } : s))
       );
-      alert("Failed to update subscription status. Please make sure the backend is updated.");
-    }
-  };
+      showToast(`Subscription set to ${nextStatus.toUpperCase()}`);
 
-  const filteredShops = shops.filter((shop) =>
-    shop?.title?.toLowerCase().includes(search.toLowerCase()) ||
-    shop?.description?.toLowerCase().includes(search.toLowerCase())
+      try {
+        await dispatch(toggleSubscription({ mallId, subscriptionStatus: nextStatus })).unwrap();
+      } catch (err) {
+        console.error("Subscription update error:", err);
+        // Revert on error
+        setFoods((prev) =>
+          prev.map((s) => (s._id === mallId ? { ...s, subscriptionStatus: currentStatus } : s))
+        );
+        alert("Failed to update subscription status. Please ensure backend is running.");
+      }
+    },
+    [dispatch, showToast]
   );
 
+  // Manage Stores Navigation Handler
+  const handleManageStores = useCallback(
+    (mallId) => {
+      navigate(`/branddashboard2/${mallId}`);
+    },
+    [navigate]
+  );
+
+  // Open Edit Modal
+  const handleEdit = useCallback((mall) => {
+    setModalConfig({ isOpen: true, mall });
+  }, []);
+
+  // Delete Handler
+  const handleDelete = useCallback(
+    (id, title) => {
+      if (window.confirm(`Are you sure you want to delete "${title || "this mall"}"?`)) {
+        axios
+          .delete(`${API_BASE}/api/shops/${id}`)
+          .then(() => {
+            setFoods((prev) => prev.filter((shop) => shop._id !== id));
+            showToast(`"${title || "Mall"}" deleted successfully.`);
+          })
+          .catch((err) => {
+            console.error("Error deleting shop:", err);
+            alert("Failed to delete mall: " + (err.response?.data?.message || err.message));
+          });
+      }
+    },
+    [showToast]
+  );
+
+  // Add / Edit Form Submit Handler
+  const handleFormSubmit = useCallback(
+    (formData, editId) => {
+      setIsSubmitting(true);
+      if (editId) {
+        axios
+          .put(`${API_BASE}/api/shops/${editId}`, formData)
+          .then((res) => {
+            setFoods((prev) => prev.map((s) => (s._id === editId ? res.data : s)));
+            setModalConfig({ isOpen: false, mall: null });
+            showToast(`Mall "${formData.title}" updated successfully!`);
+          })
+          .catch((err) => {
+            console.error("Error updating shop:", err);
+            alert("Failed to update mall: " + (err.response?.data?.message || err.message));
+          })
+          .finally(() => setIsSubmitting(false));
+      } else {
+        axios
+          .post(`${API_BASE}/api/shops`, formData)
+          .then((res) => {
+            setFoods((prev) => [...prev, res.data]);
+            setModalConfig({ isOpen: false, mall: null });
+            showToast(`Mall "${formData.title}" added to directory!`);
+          })
+          .catch((err) => {
+            console.error("Error creating shop:", err);
+            alert("Failed to add mall: " + (err.response?.data?.message || err.message));
+          })
+          .finally(() => setIsSubmitting(false));
+      }
+    },
+    [showToast]
+  );
+
+  // Sign out Handler
+  const handleSignOut = useCallback(() => {
+    localStorage.clear();
+    navigate("/");
+  }, [navigate]);
+
+  // Tab Counts Memo
+  const tabCounts = useMemo(() => {
+    const activeMalls = shops.filter((s) => s.subscriptionStatus !== "inactive").length;
+    const inactiveMalls = shops.filter((s) => s.subscriptionStatus === "inactive").length;
+    const totalStores = shops.reduce(
+      (acc, s) => acc + (s.menuItems ? s.menuItems.length : 0),
+      0
+    );
+
+    return {
+      "All Complexes": shops.length,
+      "Active Subscriptions": activeMalls,
+      "Inactive Malls": inactiveMalls,
+      "Store Directors": totalStores
+    };
+  }, [shops]);
+
+  // Filtered Shops Memo
+  const displayedShops = useMemo(() => {
+    return shops.filter((shop) => {
+      // 1. Search Query Filter
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matches =
+          (shop.title && shop.title.toLowerCase().includes(q)) ||
+          (shop.description && shop.description.toLowerCase().includes(q)) ||
+          (shop.email && shop.email.toLowerCase().includes(q));
+        if (!matches) return false;
+      }
+
+      // 2. Tab Filter
+      if (activeTab === "Active Subscriptions") {
+        return shop.subscriptionStatus !== "inactive";
+      }
+      if (activeTab === "Inactive Malls") {
+        return shop.subscriptionStatus === "inactive";
+      }
+      return true; // "All Complexes" & "Store Directors"
+    });
+  }, [shops, search, activeTab]);
+
   return (
-    <div className="rc-page-container">
-      {/* Reusable Navbar */}
-      <Navbar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search malls by name or location..."
-        actions={
-          <Button
-            variant="primary"
-            onClick={openAddModal}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            }
-          >
-            Add New Mall
-          </Button>
-        }
+    <div className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[100px] lg:pl-[108px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]">
+      {/* Reusable Left Floating Dock Navigation (Fixed Overlay above the page) */}
+      <DockSidebar
+        isCollapsed={isDockCollapsed}
+        onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
+        onAddMall={() => setModalConfig({ isOpen: true, mall: null })}
+        activeItem={activeDockItem}
+        onNavigateHome={() => {
+          setActiveDockItem("home");
+          setActiveTab("All Complexes");
+        }}
+        onNavigateQrStudio={() => navigate("/qrcode")}
+        onNavigateStoreDirectors={() => {
+          setActiveDockItem("stores");
+          setActiveTab("Store Directors");
+        }}
+        onNavigateAnalytics={() => navigate("/analytics")}
+        onCloudClick={() => navigate("/analytics")}
+        onHelpClick={() => setIsHelpModalOpen(true)}
+        onProfileClick={() => setIsProfileModalOpen(true)}
       />
 
-      {/* Main Content Area */}
-      <main className="rc-main-content">
-        {/* Reusable Stat Cards (Strict White & Blue) */}
-        <section className="rc-stats-grid">
-          <StatCard
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 21h18M3 7v14M21 7v14M6 11h4M6 15h4M14 11h4M14 15h4M9 3l3-2 3 2" />
-              </svg>
-            }
-            label="Total Registered Malls"
-            value={shops.length}
-            sub="Operational complexes"
-          />
-
-          <StatCard
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-            }
-            label="Search Results"
-            value={filteredShops.length}
-            sub={search ? `Matching "${search}"` : "All records"}
-          />
-
-          <StatCard
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-            }
-            label="System Status"
-            value="Active"
-            sub="Cloud sync verified"
-          />
-        </section>
-
-        {/* Section Heading */}
-        <div className="rc-section-header">
-          <div>
-            <h2 className="rc-section-title">Registered Malls & Complexes</h2>
-            <p className="rc-section-desc">Manage your mall destinations, shops, and customer queue counters.</p>
+      {/* Main Full-Screen Canvas */}
+      <main className="flex-1 flex flex-col gap-5 sm:gap-6 min-w-0 w-full">
+        {/* Luxury Header Area with REDCARPET Watermark (Collapses smoothly on scroll) */}
+        <header
+          className={`relative overflow-hidden transition-all duration-300 ease-in-out ${
+            isScrolled
+              ? "max-h-0 opacity-0 -translate-y-4 pointer-events-none mb-0 py-0"
+              : "max-h-56 opacity-100 translate-y-0 mb-1 pt-1 pb-1"
+          }`}
+        >
+          {/* Luxury REDCARPET Backdrop Branding Watermark */}
+          <div
+            aria-hidden="true"
+            className="absolute -top-7 -left-2 text-6xl sm:text-7xl lg:text-[88px] font-black tracking-[0.25em] text-red-600/[0.05] select-none pointer-events-none uppercase -z-10 whitespace-nowrap leading-none"
+          >
+            REDCARPET
           </div>
-          <Button variant="outline" onClick={openAddModal}>
-            + Register Mall
-          </Button>
+
+          {/* RedCarpet Brand Pill */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600/10 text-red-700 text-[11px] sm:text-xs font-black uppercase tracking-wider border border-red-600/20 mb-2 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+            <span>RED CARPET PLATFORM</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-[32px] font-bold tracking-tight text-[#141619] leading-tight m-0">
+            <span className="inline-flex items-center flex-wrap gap-2">
+              Managing
+              <span className="w-8 h-8 rounded-full bg-white border border-[#e2e5e4] shadow-xs flex items-center justify-center text-gray-900 transition-transform hover:rotate-12 cursor-pointer">
+                <Settings size={17} strokeWidth={2.2} />
+              </span>
+              Your Complexes
+            </span>
+            <br className="hidden sm:inline" />
+            <span className="inline-flex items-center flex-wrap gap-2 sm:mt-1">
+              and
+              <span className="px-3 py-1 rounded-full bg-[#e5fc73] text-gray-950 text-xs sm:text-sm font-bold shadow-xs flex items-center gap-1.5 transition-transform hover:-rotate-3 cursor-pointer">
+                <Link2 size={14} strokeWidth={2.5} />
+                Queues
+              </span>
+              Workflows
+            </span>
+          </h1>
+        </header>
+
+        {/* Sticky Controls Row: Horizontal Tabs Navbar + Refresh Button + Search Bar */}
+        <div
+          className={`sticky top-0 z-30 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 py-2.5 sm:py-3 transition-all duration-300 ${
+            isScrolled
+              ? "bg-white/95 backdrop-blur-md border-b border-gray-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.03)] -mx-2 px-2 sm:-mx-4 sm:px-4"
+              : "bg-white border-b border-gray-100"
+          }`}
+        >
+          {/* Horizontal Navbar Tabs */}
+          <TabsNav
+            tabs={TABS}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            counts={tabCounts}
+          />
+
+          {/* Right Controls: Refresh Button & Search Bar */}
+          <div className="flex items-center gap-2.5 self-end md:self-auto w-full md:w-auto justify-end">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              title="Refresh Malls Data"
+              className="w-10 h-10 rounded-full bg-white hover:bg-gray-50 border border-[#e7ebe8] flex items-center justify-center text-gray-700 hover:text-black shadow-xs transition-transform duration-200 active:rotate-180 cursor-pointer shrink-0"
+            >
+              <RefreshCw size={16} className={isLoading ? "animate-spin text-black" : ""} />
+            </button>
+
+            {/* Reusable Debounced Search Bar */}
+            <SearchBar
+              value={search}
+              onChange={(query) => setSearch(query)}
+              placeholder="Search malls, cities, emails..."
+            />
+          </div>
         </div>
 
-        {/* Mall Cards Grid */}
-        {isLoading ? (
-          <SkeletonMallGrid count={6} />
-        ) : filteredShops.length === 0 ? (
-          <div
-            style={{
-              background: "var(--rc-white)",
-              border: "1px dashed var(--rc-blue-200)",
-              borderRadius: "var(--rc-radius-xl)",
-              padding: "60px 24px",
-              textAlign: "center",
-              maxWidth: "500px",
-              margin: "40px auto",
-            }}
-          >
-            <div style={{ fontSize: "40px", marginBottom: "12px" }}>🏢</div>
-            <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 8px 0" }}>No Malls Found</h3>
-            <p style={{ color: "var(--rc-text-muted)", fontSize: "14px", marginBottom: "20px" }}>
-              {search
-                ? `No results matching "${search}". Try searching another name.`
-                : "No malls registered yet. Click below to add your first mall!"}
-            </p>
-            <Button variant="primary" onClick={openAddModal}>
-              + Add New Mall Now
-            </Button>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "24px" }}>
-            {filteredShops.map((shop) => (
-              <article key={shop._id} className="rc-card">
-                {/* Image & Overlay Badge */}
-                <div className="rc-card-media">
-                  <img
-                    src={
-                      shop.image ||
-                      "https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?w=800&auto=format&fit=crop&q=80"
-                    }
-                    alt={shop.title || "Mall Cover"}
-                    className="rc-card-img"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src =
-                        "https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?w=800&auto=format&fit=crop&q=80";
-                    }}
+        {/* Full-Screen Cards Section: Exactly 3 cards per row on desktop */}
+        <section className="flex-1 w-full" aria-label="Registered Malls and Complexes">
+          {isLoading && shops.length === 0 ? (
+            <div className="py-20 text-center text-sm text-gray-500">
+              <RefreshCw size={26} className="animate-spin mx-auto mb-3 text-gray-400" />
+              Loading shopping complexes...
+            </div>
+          ) : displayedShops.length === 0 ? (
+            <div className="py-16 px-4 text-center bg-[#fafbfb] rounded-[24px] border border-dashed border-gray-200">
+              <Building2 size={36} className="mx-auto mb-2 text-gray-400" />
+              <h4 className="text-sm font-bold text-gray-800 m-0">No shopping complexes found</h4>
+              <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                {search
+                  ? `No complexes match "${search}". Try adjusting your keywords.`
+                  : "Click '+ Register New Mall' in the left dock to add your first shopping complex."}
+              </p>
+              <button
+                type="button"
+                onClick={() => setModalConfig({ isOpen: true, mall: null })}
+                className="mt-4 text-xs font-semibold bg-[#111] text-white px-4 py-2 rounded-full cursor-pointer hover:bg-gray-800 transition-colors shadow-sm"
+              >
+                + Register Complex
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+              {displayedShops.map((mall, idx) => (
+                <div key={mall._id} data-card-index={idx}>
+                  <MallCard
+                    mall={mall}
+                    onToggleSubscription={handleToggleSubscription}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onManageStores={handleManageStores}
                   />
-                  <div
-                    className="rc-card-badge"
-                    style={{
-                      background: shop.subscriptionStatus === "inactive" ? "#ef4444" : "#10b981",
-                    }}
-                  >
-                    {shop.subscriptionStatus === "inactive" ? "● Expired" : "● Active"}
-                  </div>
                 </div>
-
-                {/* Card Content */}
-                <div className="rc-card-body">
-                  <h3 className="rc-card-title">{shop.title || "Unnamed Mall"}</h3>
-
-                  {shop.description && (
-                    <p className="rc-card-desc">{shop.description}</p>
-                  )}
-
-                  {/* Metadata Row */}
-                  <div className="rc-card-meta">
-                    {shop.description && (
-                      <div className="rc-meta-item">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                        <span>{shop.description}</span>
-                      </div>
-                    )}
-                    {shop.email && (
-                      <div className="rc-meta-item">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                          <polyline points="22,6 12,13 2,6" />
-                        </svg>
-                        <span>{shop.email}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Subscription ON/OFF Switch */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "8px 12px",
-                      background: shop.subscriptionStatus === "inactive" ? "#fef2f2" : "#f0fdf4",
-                      border: `1px solid ${shop.subscriptionStatus === "inactive" ? "#fecaca" : "#bbf7d0"}`,
-                      borderRadius: "10px",
-                      margin: "4px 0 12px 0",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          width: "8px",
-                          height: "8px",
-                          borderRadius: "50%",
-                          background: shop.subscriptionStatus === "inactive" ? "#ef4444" : "#10b981",
-                        }}
-                      />
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          color: shop.subscriptionStatus === "inactive" ? "#991b1b" : "#166534",
-                        }}
-                      >
-                        {shop.subscriptionStatus === "inactive" ? "Subscription: OFF (Expired)" : "Subscription: ON (Active)"}
-                      </span>
-                    </div>
-
-                    <label
-                      style={{
-                        position: "relative",
-                        display: "inline-block",
-                        width: "44px",
-                        height: "24px",
-                        cursor: "pointer",
-                        margin: 0,
-                      }}
-                      title="Toggle Subscription ON / OFF"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={shop.subscriptionStatus !== "inactive"}
-                        onChange={() => handleToggleSubscription(shop._id, shop.subscriptionStatus)}
-                        style={{ opacity: 0, width: 0, height: 0, position: "absolute" }}
-                      />
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          backgroundColor: shop.subscriptionStatus !== "inactive" ? "#10b981" : "#cbd5e1",
-                          borderRadius: "24px",
-                          transition: "all 0.25s ease",
-                          boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)",
-                        }}
-                      >
-                        <span
-                          style={{
-                            position: "absolute",
-                            content: '""',
-                            height: "18px",
-                            width: "18px",
-                            left: shop.subscriptionStatus !== "inactive" ? "22px" : "3px",
-                            bottom: "3px",
-                            backgroundColor: "#ffffff",
-                            borderRadius: "50%",
-                            transition: "all 0.25s ease",
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                          }}
-                        />
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="rc-card-actions" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      style={{ flex: "1 1 100%" }}
-                      onClick={() => navigate(`/branddashboard2/${shop._id}`)}
-                      icon={
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                          <line x1="3" y1="6" x2="21" y2="6" />
-                          <path d="M16 10a4 4 0 0 1-8 0" />
-                        </svg>
-                      }
-                    >
-                      Admin Dashboard
-                    </Button>
-
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      style={{ flex: "1 1 calc(50% - 4px)" }}
-                      onClick={() => openEditModal(shop)}
-                      title="Edit Mall Details"
-                      icon={
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      }
-                    >
-                      Edit
-                    </Button>
-
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      style={{ flex: "1 1 calc(50% - 4px)" }}
-                      onClick={() => handleDelete(shop._id, shop.title)}
-                      title="Delete Mall"
-                      icon={
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          <line x1="10" y1="11" x2="10" y2="17" />
-                          <line x1="14" y1="11" x2="14" y2="17" />
-                        </svg>
-                      }
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </section>
       </main>
 
-      {/* Reusable Modal for Add / Edit Mall */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        title={editFood ? `Edit "${editFood.title}"` : "Register New Mall Complex"}
-        subtitle={editFood ? "Update mall configuration & credentials" : "Enter details to create a new mall complex"}
-        footer={
-          <>
-            <Button variant="ghost" onClick={closeModal}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" form="mall-form">
-              {editFood ? "Save Changes" : "Create Mall Complex"}
-            </Button>
-          </>
-        }
-      >
-        <form id="mall-form" onSubmit={handleSubmit} className="rc-form-grid">
-          <div className="rc-form-group">
-            <label className="rc-label">Mall Title / Name *</label>
-            <input
-              type="text"
-              name="title"
-              className="rc-input"
-              placeholder="e.g. Phoenix Marketcity"
-              value={newFood.title}
-              onChange={handleChange}
-              required
-            />
-          </div>
+      {/* Self-contained Add / Edit Modal (Form state is isolated to prevent parent re-renders) */}
+      <MallModal
+        isOpen={modalConfig.isOpen}
+        initialData={modalConfig.mall}
+        onClose={() => setModalConfig({ isOpen: false, mall: null })}
+        onSubmit={handleFormSubmit}
+        isSubmitting={isSubmitting}
+      />
 
-          <div className="rc-form-group">
-            <label className="rc-label">Location / Address *</label>
-            <input
-              type="text"
-              name="description"
-              className="rc-input"
-              placeholder="e.g. Dewas Road, Indore"
-              value={newFood.description}
-              onChange={handleChange}
-              required
-            />
-          </div>
+      {/* SuperAdmin Profile Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        totalMalls={shops.length}
+        activeLicenses={tabCounts["Active Subscriptions"]}
+        onSignOut={handleSignOut}
+      />
 
-          <div className="rc-form-group rc-form-group-full">
-            <label className="rc-label">Cover Image URL *</label>
-            <input
-              type="text"
-              name="image"
-              className="rc-input"
-              placeholder="https://images.unsplash.com/..."
-              value={newFood.image}
-              onChange={handleChange}
-              required
-            />
-            {newFood.image && (
-              <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "12px", color: "var(--rc-text-muted)" }}>Preview:</span>
-                <img
-                  src={newFood.image}
-                  alt="Preview"
-                  style={{ width: "60px", height: "40px", objectFit: "cover", borderRadius: "6px", border: "1px solid var(--rc-border-blue)" }}
-                  onError={(e) => (e.target.style.display = "none")}
-                />
-              </div>
-            )}
-          </div>
+      {/* Help & Guides Modal */}
+      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
 
-          <div className="rc-form-group">
-            <label className="rc-label">Admin Email *</label>
-            <input
-              type="email"
-              name="email"
-              className="rc-input"
-              placeholder="admin@mall.com"
-              value={newFood.email}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className="rc-form-group">
-            <label className="rc-label">Role Access</label>
-            <select
-              name="role"
-              className="rc-input"
-              value={newFood.role}
-              onChange={handleChange}
-            >
-              <option value="superadmin">SuperAdmin</option>
-              <option value="admin">Admin (Mall Manager)</option>
-            </select>
-          </div>
-
-          <div className="rc-form-group">
-            <label className="rc-label">
-              {editFood ? "New Password (Optional)" : "Password *"}
-            </label>
-            <input
-              type="password"
-              name="password"
-              className="rc-input"
-              placeholder="••••••••"
-              value={newFood.password}
-              onChange={handleChange}
-              required={!editFood}
-            />
-          </div>
-
-          <div className="rc-form-group">
-            <label className="rc-label">
-              {editFood ? "Confirm New Password" : "Confirm Password *"}
-            </label>
-            <input
-              type="password"
-              name="mallconpassword"
-              className="rc-input"
-              placeholder="••••••••"
-              value={newFood.mallconpassword}
-              onChange={handleChange}
-              required={!editFood}
-            />
-          </div>
-        </form>
-      </Modal>
+      {/* Reusable Toast Notification */}
+      <Toast message={toastMessage} />
     </div>
   );
 };

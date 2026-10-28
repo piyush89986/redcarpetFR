@@ -8,7 +8,6 @@ import Counter from "../components/Counter";
 import Countdown from "../components/Countdown";
 import EditDisplay from "../components/EditDisplay";
 import AuthPage from "../components/AuthPage";
-import BrandDashboard from "../components/BrandDashboard";
 import OwnerDashboard from "../components/OwnerDashboard";
 import ShopDetail from "../components/ShopDetail";
 import BrandDashboard2 from "../components/BrandDashboard2";
@@ -17,6 +16,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import PaymentPage from "../components/PaymentPage";
 import ForgotPassword from "../components/ForgotPassword";
 import QrCode from "../components/QrCode";
+import AnalyticsDashboard from "../components/AnalyticsDashboard";
 
 const AppRoutes = () => {
   return (
@@ -28,14 +28,16 @@ const AppRoutes = () => {
           {/* SuperAdmin Platform Routes */}
           <Route element={<ProtectedRoute allowedRoles={["superadmin"]} />}>
             <Route path="/ownerdashboard" element={<OwnerDashboard />} />
-            <Route path="/branddashboard" element={<BrandDashboard />} />
-            <Route path="BrandDashboard" element={<BrandDashboard />} />
+            <Route path="/branddashboard" element={<OwnerDashboard />} />
+            <Route path="BrandDashboard" element={<OwnerDashboard />} />
+            <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/statistics" element={<AnalyticsDashboard />} />
           </Route>
 
           {/* Mall Admin + SuperAdmin Routes (QR Studio, Mall Management & Store Director) */}
           <Route element={<ProtectedRoute allowedRoles={["admin", "superadmin"]} />}>
             <Route path="/branddashboard2/:id" element={<BrandDashboard2 />} />
-            <Route path="/shop/:id" element={<ShopDetail />} />
+            <Route path="/shop/:id" element={<BrandDashboard2 />} />
             <Route path="/qrcode" element={<QrCode />} />
           </Route>
 

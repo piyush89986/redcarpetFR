@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 import { useNavigate } from "react-router-dom";
-import { Button } from "./common";
+import { Sparkles, Clock, CheckCircle2, ArrowLeft } from "lucide-react";
 import API_BASE from "../apiConfig";
-import "./common/common.css";
 
 const socket = io(API_BASE);
 
@@ -51,114 +50,68 @@ const Countdown = () => {
   const formattedTime = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%)",
-        color: "var(--rc-text-main)",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        textAlign: "center",
-        padding: "20px",
-        boxSizing: "border-box",
-      }}
-    >
+    <div className="min-h-screen bg-[#121316] text-white w-full flex flex-col items-center justify-center p-4 sm:p-6 font-['Plus_Jakarta_Sans',sans-serif] relative overflow-hidden selection:bg-[#e5fc73] selection:text-[#111]">
+      {/* Luxury REDCARPET Backdrop Branding Watermark */}
       <div
-        style={{
-          background: "var(--rc-white)",
-          border: "1px solid var(--rc-border-blue)",
-          borderRadius: "var(--rc-radius-xl)",
-          padding: "48px 36px",
-          maxWidth: "520px",
-          width: "100%",
-          boxShadow: "var(--rc-shadow-lg)",
-        }}
+        aria-hidden="true"
+        className="absolute top-1/2 -translate-y-1/2 -left-6 text-7xl sm:text-8xl lg:text-9xl font-black tracking-[0.25em] text-white/[0.03] select-none pointer-events-none uppercase -z-0 whitespace-nowrap"
       >
-        <span
-          style={{
-            padding: "4px 14px",
-            borderRadius: "9999px",
-            background: "var(--rc-blue-50)",
-            color: "var(--rc-blue-700)",
-            fontSize: "12px",
-            fontWeight: 700,
-            letterSpacing: "0.5px",
-            textTransform: "uppercase",
-            border: "1px solid var(--rc-blue-200)",
-            display: "inline-block",
-            marginBottom: "16px",
-          }}
-        >
-          ● Live Dispatch Call
-        </span>
+        REDCARPET
+      </div>
 
-        <h1 style={{ fontSize: "28px", fontWeight: 900, color: "var(--rc-blue-900)", margin: "0 0 8px 0" }}>
+      {/* Main Glass Card */}
+      <div className="relative z-10 w-full max-w-lg bg-white/5 border border-white/10 backdrop-blur-xl rounded-[36px] p-8 sm:p-12 text-center shadow-2xl">
+        {/* Brand Pill */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-600/15 text-red-400 text-xs font-black uppercase tracking-wider border border-red-600/25 shadow-2xs mb-6">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <span>LIVE DISPATCH CALL</span>
+        </div>
+
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight m-0 mb-3">
           {showMessage ? "Your Turn Is Complete" : "Please Proceed to Counter"}
         </h1>
 
-        <p style={{ color: "var(--rc-text-muted)", fontSize: "15px", margin: "0 0 32px 0" }}>
+        <p className="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-sm mx-auto mb-8">
           {showMessage
             ? "Thank you for visiting RedCarpet. Have a wonderful day!"
-            : "Your token has been called. Time remaining for your service window:"}
+            : "Your token has been called on screen. Please approach your counter during this window:"}
         </p>
 
         {/* Circular Timer Ring */}
         {!showMessage ? (
           <div
+            className="relative w-56 h-56 mx-auto mb-8 flex items-center justify-center rounded-full p-2.5 transition-all duration-1000 shadow-[0_0_40px_rgba(229,252,115,0.15)]"
             style={{
-              position: "relative",
-              width: "220px",
-              height: "220px",
-              margin: "0 auto 32px auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "50%",
-              background: `conic-gradient(var(--rc-blue-600) ${progress * 3.6}deg, var(--rc-blue-100) 0deg)`,
-              padding: "10px",
-              boxShadow: "0 8px 24px rgba(37, 99, 235, 0.2)",
+              background: `conic-gradient(#e5fc73 ${progress * 3.6}deg, rgba(255, 255, 255, 0.08) 0deg)`,
             }}
           >
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                background: "var(--rc-white)",
-                borderRadius: "50%",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <span style={{ fontSize: "44px", fontWeight: 900, color: "var(--rc-blue-700)", letterSpacing: "-1px" }}>
+            <div className="w-full h-full bg-[#18191d] rounded-full flex flex-col items-center justify-center border border-white/10">
+              <span className="text-5xl font-black text-[#e5fc73] tracking-tight font-mono">
                 {formattedTime}
               </span>
-              <span style={{ fontSize: "12px", color: "var(--rc-text-muted)", fontWeight: 600, textTransform: "uppercase" }}>
+              <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mt-1">
                 Minutes : Seconds
               </span>
             </div>
           </div>
         ) : (
-          <div style={{ padding: "40px 0" }}>
-            <div style={{ fontSize: "60px", marginBottom: "16px" }}>🎉</div>
-            <h3 style={{ fontSize: "22px", fontWeight: 800, color: "var(--rc-blue-700)", margin: "0 0 8px 0" }}>
-              Thank You For Your Visit!
-            </h3>
-            <p style={{ color: "var(--rc-text-muted)", fontSize: "14px", margin: 0 }}>
-              Order dispatched successfully.
-            </p>
+          <div className="py-10">
+            <CheckCircle2 size={64} className="text-[#e5fc73] mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Order Dispatched Successfully</h3>
+            <p className="text-xs text-gray-400">Thank you for visiting.</p>
           </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
-          <Button variant="primary" onClick={() => navigate(-1)}>
-            Return to VIP Pass
-          </Button>
+        {/* Action Button */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="px-6 py-3 rounded-full text-xs sm:text-sm font-bold bg-white/10 hover:bg-white hover:text-black text-white border border-white/15 transition-all duration-200 cursor-pointer shadow-sm inline-flex items-center gap-2"
+          >
+            <ArrowLeft size={14} />
+            <span>Return to VIP Pass</span>
+          </button>
         </div>
       </div>
     </div>

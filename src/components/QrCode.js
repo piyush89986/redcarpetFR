@@ -2,10 +2,27 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { QRCodeCanvas } from "qrcode.react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import { Navbar, Button } from "./common";
+import {
+  QrCode,
+  ArrowLeft,
+  Building2,
+  Store,
+  ChevronDown,
+  Search,
+  Copy,
+  Check,
+  Download,
+  Save,
+  Printer,
+  Sparkles
+} from "lucide-react";
 import API_BASE from "../apiConfig";
-import "./common/common.css";
-import "./QrCode.css";
+
+// Reusable Components
+import DockSidebar from "./dashboard/DockSidebar";
+import ProfileModal from "./dashboard/ProfileModal";
+import HelpModal from "./dashboard/HelpModal";
+import Toast from "./dashboard/Toast";
 
 const QRGenerator = () => {
   const navigate = useNavigate();
@@ -23,16 +40,25 @@ const QRGenerator = () => {
   const [isSaved, setIsSaved] = useState(true);
   const [copied, setCopied] = useState(false);
 
+  // Layout states
+  const [isDockCollapsed, setIsDockCollapsed] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
   const qrRef = useRef(null);
   const dropdownRef = useRef(null);
 
-  const apiBase = API_BASE;
-  const userRole = localStorage.getItem("role") || "admin";
+  const userRole = (localStorage.getItem("role") || "admin").toLowerCase().trim();
   const userShopId = localStorage.getItem("shopId") || "";
 
-  // Strict Black and White standard
-  const fgColor = "#000000";
-  const bgColor = "#ffffff";
+  // Toast feedback helper
+  const showToast = useCallback((msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage("");
+    }, 3200);
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -45,26 +71,23 @@ const QRGenerator = () => {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  // Build flattened list of targets (Malls + Individual Shops)
+  // Build flattened list of targets (Malls + Individual Stores)
   const allTargets = useMemo(() => {
     const targets = [];
     shopsData.forEach((mall) => {
-      // If admin and user has a specific mall, can filter or keep all
       const isMallForAdmin = !userShopId || mall._id === userShopId || userRole === "superadmin";
 
-      // Top-level Mall
       if (mall.title && isMallForAdmin) {
         targets.push({
           id: mall._id,
           name: mall.title,
           type: "mall",
-          category: "Mall Counter",
+          category: "Mall Central Counter",
           mallName: mall.title,
           image: mall.image,
           description: mall.description || `Mall ID: ${mall._id}`,
         });
 
-        // Individual Shops inside this Mall
         if (Array.isArray(mall.menuItems)) {
           mall.menuItems.forEach((store) => {
             if (store._id && store.name) {
@@ -86,11 +109,14 @@ const QRGenerator = () => {
     return targets;
   }, [shopsData, userRole, userShopId]);
 
-  const BASE_QR_URL =
-    process.env.REACT_APP_FRONTEND_URL ||
-    (typeof window !== "undefined" && window.location.origin && !window.location.origin.includes("localhost")
-      ? window.location.origin
-      : "https://redcarpet-fr.vercel.app");
+  const BASE_QR_URL = useMemo(() => {
+    return (
+      process.env.REACT_APP_FRONTEND_URL ||
+      (typeof window !== "undefined" && window.location.origin && !window.location.origin.includes("localhost")
+        ? window.location.origin
+        : "https://redcarpet-fr.vercel.app")
+    );
+  }, []);
 
   // Load a target's saved QR settings from DB
   const loadTargetQR = useCallback(
@@ -98,16 +124,14 @@ const QRGenerator = () => {
       if (!targetId) return;
       setSelectedTargetId(targetId);
       setIsDropdownOpen(false);
-      setSearchQuery("");
       setSaveSuccessMsg("");
       setSaveErrorMsg("");
 
+      const found = allTargets.find((t) => t.id === targetId);
       const defaultUrl = `${BASE_QR_URL}/${targetId}`;
-      setText(defaultUrl);
-      setIsSaved(true);
 
       try {
-        const res = await axios.get(`${apiBase}/api/qrcode/${targetId}`);
+        const res = await axios.get(`${API_BASE}/api/qrcode/${targetId}`);
         if (res.data?.success && res.data.data?.qrUrl) {
           let url = res.data.data.qrUrl;
           if (
@@ -115,284 +139,285 @@ const QRGenerator = () => {
             url.includes("127.0.0.1") ||
             url.includes("git-main-piyush-singh-tanwar-s-projects")
           ) {
-            url = `${BASE_QR_URL}/${targetId}`;
+            url = defaultUrl;
           }
           setText(url);
-          if (res.data.data.size) {
-            setSize(Number(res.data.data.size));
-          }
+          setSize(res.data.data.size || 240);
+          setIsSaved(true);
+        } else {
+          setText(defaultUrl);
+          setSize(240);
+          setIsSaved(true);
         }
       } catch (err) {
-        console.log("No custom QR saved yet, using default welcome link:", err.message);
+        setText(defaultUrl);
+        setSize(240);
+        setIsSaved(true);
       }
     },
-    [apiBase]
+    [allTargets, BASE_QR_URL]
   );
 
-  // Fetch all malls on mount & check query params
+  // Fetch all malls on mount
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const queryShopId = searchParams.get("shopId");
-    const queryMallId = searchParams.get("mallId");
-
     axios
-      .get(`${apiBase}/api/shops`)
+      .get(`${API_BASE}/api/shops`)
       .then((res) => {
-        const validMalls = (res.data || []).filter((s) => s.title);
-        setShopsData(validMalls);
-
-        // Determine which target to select first
-        if (queryShopId) {
-          loadTargetQR(queryShopId);
-        } else if (queryMallId) {
-          loadTargetQR(queryMallId);
-        } else if (userShopId) {
-          loadTargetQR(userShopId);
-        } else if (validMalls.length > 0) {
-          loadTargetQR(validMalls[0]._id);
-        }
+        setShopsData(res.data || []);
       })
-      .catch((err) => console.log("Failed to fetch shops for QR:", err.message));
-  }, [apiBase, location.search, userShopId, loadTargetQR]);
+      .catch((err) => {
+        console.error("Error fetching shops for QR:", err);
+      });
+  }, []);
 
-  const selectedTarget = allTargets.find((t) => t.id === selectedTargetId);
+  // Handle URL query parameters or auto-select first target
+  useEffect(() => {
+    if (allTargets.length > 0 && !selectedTargetId) {
+      const searchParams = new URLSearchParams(location.search);
+      const queryShopId = searchParams.get("shopId") || searchParams.get("mallId");
 
-  // Filter targets by search
-  const filteredTargets = allTargets.filter(
-    (t) =>
-      t.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      if (queryShopId && allTargets.some((t) => t.id === queryShopId)) {
+        loadTargetQR(queryShopId);
+      } else if (allTargets.length > 0) {
+        loadTargetQR(allTargets[0].id);
+      }
+    }
+  }, [allTargets, selectedTargetId, location.search, loadTargetQR]);
 
-  // Save current QR settings to Database
-  const handleSaveToDb = async () => {
+  const selectedTarget = useMemo(() => {
+    return allTargets.find((t) => t.id === selectedTargetId) || null;
+  }, [allTargets, selectedTargetId]);
+
+  const filteredTargets = useMemo(() => {
+    if (!searchQuery.trim()) return allTargets;
+    const q = searchQuery.toLowerCase();
+    return allTargets.filter(
+      (t) =>
+        t.name?.toLowerCase().includes(q) ||
+        t.mallName?.toLowerCase().includes(q) ||
+        t.category?.toLowerCase().includes(q)
+    );
+  }, [allTargets, searchQuery]);
+
+  // Handle Text URL Change
+  const handleTextChange = (e) => {
+    setText(e.target.value);
+    setIsSaved(false);
+  };
+
+  // Save to DB
+  const handleSaveToDB = async () => {
     if (!selectedTargetId) {
-      setSaveErrorMsg("Please select a mall or shop first.");
+      alert("Please select a store or mall first.");
       return;
     }
-    if (!text.trim()) {
-      setSaveErrorMsg("Destination URL cannot be empty.");
-      return;
-    }
-
     setIsSaving(true);
     setSaveSuccessMsg("");
     setSaveErrorMsg("");
 
     try {
-      const res = await axios.post(`${apiBase}/api/qrcode/${selectedTargetId}`, {
+      await axios.post(`${API_BASE}/api/qrcode/${selectedTargetId}`, {
         qrUrl: text.trim(),
         size: Number(size),
       });
-
-      if (res.data?.success) {
-        setIsSaved(true);
-        const name = selectedTarget?.name || "Target";
-        setSaveSuccessMsg(`QR Code for "${name}" saved to database successfully!`);
-        setTimeout(() => setSaveSuccessMsg(""), 4000);
-      } else {
-        setSaveErrorMsg(res.data?.message || "Failed to save QR configuration.");
-      }
+      setIsSaved(true);
+      setSaveSuccessMsg(`QR Code saved for ${selectedTarget?.name || "Target"}!`);
+      showToast("QR code saved to database!");
+      setTimeout(() => setSaveSuccessMsg(""), 4000);
     } catch (err) {
-      console.error("Save error:", err);
-      setSaveErrorMsg(err.response?.data?.message || "Error saving to database.");
+      console.error("Error saving QR:", err);
+      setSaveErrorMsg("Failed to save QR code. Please try again.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Copy destination link
+  // Copy Link
   const handleCopyLink = () => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     setCopied(true);
+    showToast("QR Link copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Reset to Default Welcome Page
-  const handleResetToDefault = () => {
-    if (!selectedTargetId) return;
-    const defaultUrl = `${BASE_QR_URL}/${selectedTargetId}`;
-    setText(defaultUrl);
-    setIsSaved(false);
-  };
-
-  // Download high-resolution PNG
-  const downloadQR = () => {
+  // Download High-Res PNG
+  const handleDownload = () => {
     const canvas = qrRef.current ? qrRef.current.querySelector("canvas") : null;
-    if (!canvas) {
-      alert("Please enter text or a link first to generate a QR code!");
-      return;
-    }
+    if (!canvas) return;
+
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    const fileName = selectedTarget
-      ? `${selectedTarget.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-qr.png`
-      : "redcarpet-qrcode.png";
-    a.download = fileName;
+    const targetName = (selectedTarget?.name || "redcarpet").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    a.download = `${targetName}-qr-pass.png`;
     a.click();
-  };
-
-  // Back button routing
-  const handleBackToDashboard = () => {
-    if (userRole === "superadmin") {
-      navigate("/ownerdashboard");
-    } else {
-      const backMallId = userShopId || selectedTarget?.mallId || selectedTargetId;
-      navigate(backMallId ? `/branddashboard2/${backMallId}` : "/");
-    }
+    showToast("Downloaded QR Code PNG!");
   };
 
   return (
-    <div className="rc-qr-page-container">
-      {/* Reusable White & Blue Navbar */}
-      <Navbar
-        brandBadge="QR Studio"
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBackToDashboard}
-            icon={
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-            }
-          >
-            {userRole === "superadmin" ? "All Malls" : "Mall Dashboard"}
-          </Button>
-        }
+    <div className="min-h-screen bg-white w-full py-2 sm:py-3 lg:py-4 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-14 md:pt-3.5 md:pl-[100px] lg:pl-[108px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]">
+      {/* Floating Left Dock Navigation */}
+      <DockSidebar
+        isCollapsed={isDockCollapsed}
+        onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
+        onAddMall={() => navigate("/ownerdashboard")}
+        activeItem="qr"
+        onNavigateHome={() => navigate("/ownerdashboard")}
+        onNavigateQrStudio={() => {}}
+        onNavigateStoreDirectors={() => navigate("/ownerdashboard")}
+        onNavigateAnalytics={() => navigate("/analytics")}
+        onCloudClick={() => navigate("/analytics")}
+        onHelpClick={() => setIsHelpModalOpen(true)}
+        onProfileClick={() => setIsProfileModalOpen(true)}
       />
 
-      <main className="rc-qr-wrapper">
-        {/* Header Section */}
-        <div className="rc-qr-header">
-          <div className="rc-qr-badge">Official QR Pass Generator</div>
-          <h1 className="rc-qr-title">Store &amp; Mall QR Studio</h1>
-          <p className="rc-qr-sub">
-            Generate and assign high-resolution Black &amp; White QR passes for individual shops and mall counters. Each shop has its own QR pass and Live Counter Queue.
-          </p>
-        </div>
+      {/* Main Full-Screen Canvas */}
+      <main className="flex-1 flex flex-col gap-3 sm:gap-4 min-w-0 w-full max-w-6xl mx-auto">
+        {/* Luxury Header Area with REDCARPET Backdrop Watermark */}
+        <header className="relative overflow-hidden pt-0 pb-0.5">
+          <div
+            aria-hidden="true"
+            className="absolute -top-7 -left-2 text-6xl sm:text-7xl lg:text-[76px] font-black tracking-[0.25em] text-red-600/[0.05] select-none pointer-events-none uppercase -z-10 whitespace-nowrap leading-none"
+          >
+            REDCARPET
+          </div>
 
-        {/* Generator Card */}
-        <div className="rc-qr-card">
-          {/* Left Controls */}
-          <div className="rc-qr-controls">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                if (userRole === "superadmin") {
+                  navigate("/ownerdashboard");
+                } else if (userShopId) {
+                  navigate(`/branddashboard2/${userShopId}`);
+                } else {
+                  navigate("/");
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 hover:bg-[#e5fc73] text-gray-800 text-[11px] font-bold transition-colors cursor-pointer shadow-2xs"
+            >
+              <ArrowLeft size={12} strokeWidth={2.8} />
+              <span>Back to Dashboard</span>
+            </button>
+
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600/10 text-red-700 text-[10px] font-black uppercase tracking-wider border border-red-600/20 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+              <span>OFFICIAL QR STUDIO</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#141619] leading-tight m-0">
+              Store &amp; Mall QR Studio
+            </h1>
+            <p className="text-xs text-gray-500 m-0">
+              Printable customer QR passes for self-service digital queue tokens.
+            </p>
+          </div>
+        </header>
+
+        {/* Studio Content Grid: Configuration Form & Live Preview Standee */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
+          {/* Left Column: Target Selector & Settings (7 cols) */}
+          <div className="lg:col-span-7 bg-[#fafbfb] border border-gray-200/80 rounded-[24px] p-4 sm:p-5 flex flex-col gap-3.5 shadow-xs">
             {/* Target Selector Dropdown */}
-            <div className="rc-form-group">
-              <label
-                className="rc-label"
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-              >
-                <span>Select Shop or Mall *</span>
-                <span className={`rc-status-tag ${isSaved ? "rc-status-saved" : "rc-status-unsaved"}`}>
-                  {isSaved ? "● Saved in DB" : "● Unsaved Changes"}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-xs font-bold text-gray-800 uppercase tracking-wide">
+                  Select Shopping Mall or Store Counter *
+                </label>
+                <span
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    isSaved ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                  }`}
+                >
+                  {isSaved ? "● Saved in Cloud" : "● Unsaved Changes"}
                 </span>
-              </label>
+              </div>
 
-              <div className="rc-custom-dropdown-wrap" ref={dropdownRef}>
+              {/* Custom Trigger */}
+              <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"
-                  className={`rc-dropdown-trigger ${isDropdownOpen ? "open" : ""}`}
                   onClick={() => setIsDropdownOpen((prev) => !prev)}
+                  className="w-full bg-white border border-gray-300 hover:border-black rounded-2xl p-3 flex items-center justify-between text-left transition-colors cursor-pointer shadow-2xs"
                 >
-                  <div className="rc-dropdown-selected-left">
-                    <div className="rc-mall-thumb">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
                       {selectedTarget?.image ? (
-                        <img src={selectedTarget.image} alt={selectedTarget.name} />
+                        <img
+                          src={selectedTarget.image}
+                          alt={selectedTarget.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : selectedTarget?.type === "mall" ? (
+                        <Building2 size={18} className="text-gray-600" />
                       ) : (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-                          <line x1="8" y1="6" x2="8" y2="6.01" />
-                          <line x1="12" y1="6" x2="12" y2="6.01" />
-                          <line x1="16" y1="6" x2="16" y2="6.01" />
-                        </svg>
+                        <Store size={18} className="text-gray-600" />
                       )}
                     </div>
-                    <div className="rc-dropdown-text">
-                      <span className="rc-dropdown-mall-title">
-                        {selectedTarget ? selectedTarget.name : "-- Choose a Shop or Mall --"}
-                      </span>
-                      <span className="rc-dropdown-mall-desc">
-                        {selectedTarget ? selectedTarget.category : "Click to select a store"}
-                      </span>
+
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-gray-900 truncate">
+                        {selectedTarget ? selectedTarget.name : "-- Choose a Target --"}
+                      </div>
+                      <div className="text-xs text-gray-400 truncate">
+                        {selectedTarget ? selectedTarget.category : "Click to select a store or complex"}
+                      </div>
                     </div>
                   </div>
-                  <div className={`rc-dropdown-chevron ${isDropdownOpen ? "open" : ""}`}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </div>
+
+                  <ChevronDown
+                    size={17}
+                    className={`text-gray-400 transition-transform duration-200 shrink-0 ${
+                      isDropdownOpen ? "rotate-180 text-black" : ""
+                    }`}
+                  />
                 </button>
 
                 {/* Dropdown Menu Popup */}
                 {isDropdownOpen && (
-                  <div className="rc-dropdown-menu">
-                    <div className="rc-dropdown-search-wrap">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
+                  <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 p-2 max-h-72 overflow-hidden flex flex-col">
+                    {/* Search inside dropdown */}
+                    <div className="relative mb-2 shrink-0">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input
                         type="text"
                         autoFocus
-                        placeholder="Search store or mall name..."
+                        placeholder="Search mall or brand..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="rc-dropdown-search-input"
+                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-black"
                       />
                     </div>
 
-                    <div className="rc-dropdown-items-list">
+                    {/* Target Items List */}
+                    <div className="overflow-y-auto space-y-1 pr-1 flex-1">
                       {filteredTargets.length > 0 ? (
-                        filteredTargets.map((target) => {
-                          const isSelected = target.id === selectedTargetId;
-                          return (
-                            <div
-                              key={target.id}
-                              className={`rc-dropdown-item ${isSelected ? "active" : ""}`}
-                              onClick={() => loadTargetQR(target.id)}
-                            >
-                              <div className="rc-dropdown-item-info">
-                                <div className="rc-mall-thumb">
-                                  {target.image ? (
-                                    <img src={target.image} alt={target.name} />
-                                  ) : (
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-                                    </svg>
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="rc-item-title" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <span>{target.name}</span>
-                                    {target.type === "shop" && (
-                                      <span
-                                        style={{
-                                          fontSize: "10px",
-                                          padding: "2px 6px",
-                                          borderRadius: "4px",
-                                          background: "var(--rc-blue-50)",
-                                          color: "var(--rc-blue-600)",
-                                          fontWeight: 700,
-                                        }}
-                                      >
-                                        STORE
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="rc-item-subtitle">{target.category}</div>
-                                </div>
-                              </div>
-                              {isSelected && <span className="rc-item-check">✓</span>}
+                        filteredTargets.map((target) => (
+                          <button
+                            key={target.id}
+                            type="button"
+                            onClick={() => loadTargetQR(target.id)}
+                            className={`w-full p-2 rounded-xl flex items-center gap-2.5 text-left transition-colors cursor-pointer ${
+                              selectedTargetId === target.id
+                                ? "bg-[#e5fc73] text-black font-semibold"
+                                : "hover:bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-black/5 flex items-center justify-center shrink-0">
+                              {target.type === "mall" ? <Building2 size={13} /> : <Store size={13} />}
                             </div>
-                          );
-                        })
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold truncate">{target.name}</div>
+                              <div className="text-[10px] text-gray-500 truncate">{target.category}</div>
+                            </div>
+                          </button>
+                        ))
                       ) : (
-                        <div style={{ padding: "16px", textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>
-                          No stores or malls matching "{searchQuery}"
+                        <div className="py-4 text-center text-xs text-gray-400">
+                          No matching targets found
                         </div>
                       )}
                     </div>
@@ -401,207 +426,134 @@ const QRGenerator = () => {
               </div>
             </div>
 
-            {/* Generated Destination URL (Starts from Welcome Page) */}
-            <div className="rc-form-group">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                <label className="rc-label" style={{ margin: 0 }}>
-                  QR Destination URL (Welcome Pass Page) *
-                </label>
-                <button
-                  type="button"
-                  onClick={handleResetToDefault}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--rc-blue-600)",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                  }}
-                >
-                  Reset Default
-                </button>
-              </div>
-
-              <div className="rc-link-input-row">
+            {/* Target Destination Link */}
+            <div>
+              <label className="block text-xs font-bold text-gray-800 uppercase tracking-wide mb-1.5">
+                Pass Destination URL
+              </label>
+              <div className="flex gap-2">
                 <input
                   type="text"
-                  className="rc-input"
-                  placeholder="https://yourdomain.com/:id"
                   value={text}
-                  onChange={(e) => {
-                    setText(e.target.value);
-                    setIsSaved(false);
-                  }}
-                  style={{ fontFamily: "monospace", fontSize: "13px" }}
+                  onChange={handleTextChange}
+                  className="flex-1 px-3.5 py-2.5 text-xs rounded-xl border border-gray-300 focus:border-black outline-none font-mono transition-colors bg-white"
                 />
                 <button
                   type="button"
-                  className="rc-icon-button"
                   onClick={handleCopyLink}
-                  title="Copy link to clipboard"
+                  className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs shrink-0"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  {copied ? "Copied!" : "Copy"}
+                  {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                  <span>{copied ? "Copied" : "Copy"}</span>
                 </button>
-                <a
-                  href={text}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rc-icon-button"
-                  title="Test welcome pass link in new tab"
-                  style={{ textDecoration: "none" }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                    <polyline points="15 3 21 3 21 9" />
-                    <line x1="10" y1="14" x2="21" y2="3" />
-                  </svg>
-                  Test ↗
-                </a>
               </div>
+              <p className="text-[11px] text-gray-400 mt-1 m-0">
+                When customers scan the QR, this URL will open their live VIP queue pass.
+              </p>
             </div>
 
-            {/* Dimensions Slider */}
-            <div className="rc-form-group">
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "6px",
-                }}
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 pt-3 border-t border-gray-200/80 flex-wrap">
+              <button
+                type="button"
+                onClick={handleSaveToDB}
+                disabled={isSaving}
+                className="px-5 py-2.5 rounded-full text-xs font-bold bg-[#111] hover:bg-gray-800 text-white inline-flex items-center gap-2 cursor-pointer shadow-md transition-colors disabled:opacity-50"
               >
-                <label className="rc-label" style={{ margin: 0 }}>
-                  QR Code Resolution
-                </label>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "#1d4ed8" }}>
-                  {size} × {size} px
-                </span>
-              </div>
-              <input
-                type="range"
-                min="160"
-                max="360"
-                step="10"
-                value={size}
-                onChange={(e) => {
-                  setSize(Number(e.target.value));
-                  setIsSaved(false);
-                }}
-                style={{ width: "100%", accentColor: "#2563eb", cursor: "pointer" }}
-              />
+                <Save size={14} />
+                <span>{isSaving ? "Saving..." : "Save to Cloud"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="px-5 py-2.5 rounded-full text-xs font-bold bg-white hover:bg-gray-100 border border-gray-200 text-gray-800 inline-flex items-center gap-2 cursor-pointer shadow-2xs transition-colors"
+              >
+                <Download size={14} />
+                <span>Download PNG</span>
+              </button>
             </div>
 
-            {/* Save to Database & Feedback Section */}
-            <div className="rc-save-actions">
-              {saveSuccessMsg && (
-                <div className="rc-alert-bubble rc-alert-success-bubble">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                    <polyline points="22 4 12 14.01 9 11.01" />
-                  </svg>
-                  <span>{saveSuccessMsg}</span>
-                </div>
-              )}
-
-              {saveErrorMsg && (
-                <div className="rc-alert-bubble rc-alert-error-bubble">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  <span>{saveErrorMsg}</span>
-                </div>
-              )}
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <Button
-                  variant="primary"
-                  onClick={handleSaveToDb}
-                  disabled={isSaving}
-                  style={{ width: "100%" }}
-                  icon={
-                    !isSaving ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                        <polyline points="17 21 17 13 7 13 7 21" />
-                        <polyline points="7 3 7 8 15 8" />
-                      </svg>
-                    ) : null
-                  }
-                >
-                  {isSaving ? "Saving..." : "Save to DB"}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={downloadQR}
-                  style={{ width: "100%" }}
-                  icon={
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                  }
-                >
-                  Download PNG
-                </Button>
+            {saveSuccessMsg && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold">
+                {saveSuccessMsg}
               </div>
-            </div>
+            )}
+            {saveErrorMsg && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 font-semibold">
+                {saveErrorMsg}
+              </div>
+            )}
           </div>
 
-          {/* Right Live Preview Panel */}
-          <div className="rc-qr-preview-panel">
-            <div className="rc-preview-heading">
-              <span
-                style={{
-                  width: "8px",
-                  height: "8px",
-                  borderRadius: "50%",
-                  background: "#2563eb",
-                  display: "inline-block",
-                }}
-              ></span>
-              Live Scan Preview
-            </div>
+          {/* Right Column: Live Printable Standee Preview (5 cols) */}
+          <div className="lg:col-span-5 flex flex-col items-center">
+            <div className="w-full max-w-sm bg-white border border-gray-200 rounded-[24px] p-4 sm:p-5 shadow-md flex flex-col items-center text-center relative overflow-hidden">
+              {/* Standee Branding Pill */}
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600/10 text-red-700 text-[10px] font-black uppercase tracking-wider border border-red-600/20 mb-2">
+                <Sparkles size={11} className="text-red-600" />
+                <span>OFFICIAL QUEUE STANDEE</span>
+              </div>
 
-            <div ref={qrRef} className="rc-qr-canvas-frame">
-              <QRCodeCanvas
-                value={text || `${BASE_QR_URL}/${selectedTargetId || "welcome"}`}
-                size={size}
-                fgColor={fgColor}
-                bgColor={bgColor}
-                level="H"
-                includeMargin={true}
-              />
-            </div>
+              {/* Target Name */}
+              <h3 className="text-base font-black text-gray-900 m-0 mb-0.5 max-w-xs truncate">
+                {selectedTarget?.name || "RedCarpet Pass"}
+              </h3>
+              <p className="text-xs text-gray-500 m-0 mb-2.5 max-w-xs truncate">
+                {selectedTarget?.mallName || "Shopping Complex"}
+              </p>
 
-            <div className="rc-preview-mall-title">
-              {selectedTarget?.name || "Red Carpet VIP"}
-            </div>
+              {/* High-Resolution QR Canvas */}
+              <div className="p-2.5 bg-white rounded-2xl border-2 border-[#141619] shadow-sm mb-2.5">
+                <div ref={qrRef}>
+                  <QRCodeCanvas
+                    value={text || "https://redcarpet.com"}
+                    size={175}
+                    level="H"
+                    fgColor="#000000"
+                    bgColor="#ffffff"
+                  />
+                </div>
+              </div>
 
-            <div style={{ fontSize: "12px", color: "var(--rc-blue-600)", fontWeight: 600, marginTop: "2px" }}>
-              {selectedTarget?.category || "VIP Queue Pass"}
-            </div>
+              <div className="text-[11px] font-bold text-gray-800 uppercase tracking-wider mb-0.5">
+                Scan with Camera
+              </div>
+              <div className="text-[10px] text-gray-400 max-w-xs">
+                To join the VIP queue &amp; track live counter token
+              </div>
 
-            <div className="rc-preview-badge" style={{ marginTop: "12px" }}>
-              <span>●</span>
-              Strict B&amp;W High-Contrast Print Quality
+              {/* Print Standee Action */}
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="mt-3 w-full py-2 rounded-full bg-gray-100 hover:bg-black hover:text-white text-gray-800 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+              >
+                <Printer size={13} />
+                <span>Print Counter Standee</span>
+              </button>
             </div>
-
-            <span style={{ fontSize: "12px", color: "#64748b", marginTop: "12px" }}>
-              Ready for counter stands &amp; smartphone scanning
-            </span>
           </div>
         </div>
       </main>
+
+      {/* SuperAdmin / Admin Profile Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        totalMalls={shopsData.length}
+        activeLicenses={shopsData.length}
+        onSignOut={() => {
+          localStorage.clear();
+          navigate("/");
+        }}
+      />
+
+      {/* Help Modal */}
+      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+
+      {/* Floating Toast Notification */}
+      <Toast message={toastMessage} />
     </div>
   );
 };
