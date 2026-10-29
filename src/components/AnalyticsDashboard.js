@@ -3,16 +3,13 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
-  Building2,
   Store,
   QrCode,
   Users,
   RefreshCw,
   ArrowUpRight,
   TrendingUp,
-  Activity,
-  CheckCircle2,
-  Calendar
+  Activity
 } from "lucide-react";
 import API_BASE from "../apiConfig";
 
@@ -24,18 +21,27 @@ import ProfileModal from "./dashboard/ProfileModal";
 import HelpModal from "./dashboard/HelpModal";
 import Toast from "./dashboard/Toast";
 
-const TABS = ["All Complexes", "Shop Counters", "Real Scans Log"];
+const TABS = ["Store Counters", "Real Scans Log", "Recent Activity"];
 
 export default function AnalyticsDashboard() {
   const navigate = useNavigate();
+
+  // Resolve business/mall identifier strictly for the logged-in manager
   const storedShopId = localStorage.getItem("shopId");
-  const storedRole = (localStorage.getItem("role") || "admin").toLowerCase().trim();
+  const storedUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
+  }, []);
+  const effectiveShopId = storedShopId || storedUser?.shopId || storedUser?.mallId || "";
 
   // Data & State
   const [analyticsData, setAnalyticsData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState(storedShopId ? "Shop Counters" : "All Complexes");
+  const [activeTab, setActiveTab] = useState("Store Counters");
 
   // Layout & Modal states
   const [isDockCollapsed, setIsDockCollapsed] = useState(false);
@@ -44,7 +50,7 @@ export default function AnalyticsDashboard() {
   const [toastMessage, setToastMessage] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Scroll detection for collapsible header: triggers after scrolling past the 4th card
+  // Scroll detection for collapsible header
   useEffect(() => {
     const handleScroll = () => {
       const fourthCard = document.querySelector("[data-card-index='3']");
@@ -69,12 +75,12 @@ export default function AnalyticsDashboard() {
     setTimeout(() => setToastMessage(""), 3000);
   }, []);
 
-  // Fetch real analytics from backend (scoped to business if storedShopId exists)
+  // Fetch real analytics strictly scoped to this particular mall / business
   const fetchAnalytics = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const url = storedShopId
-        ? `${API_BASE}/api/analytics/overview?mallId=${storedShopId}`
+      const url = effectiveShopId
+        ? `${API_BASE}/api/analytics/overview?mallId=${effectiveShopId}`
         : `${API_BASE}/api/analytics/overview`;
       const res = await axios.get(url);
       if (res.data?.success) {
@@ -86,16 +92,16 @@ export default function AnalyticsDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [storedShopId, showToast]);
+  }, [effectiveShopId, showToast]);
 
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
-  // Real Database Metrics
+  // Real Database Metrics for this business
   const metrics = analyticsData?.metrics || {
-    totalMalls: 0,
-    activeMalls: 0,
+    totalMalls: 1,
+    activeMalls: 1,
     totalStores: 0,
     activeStores: 0,
     totalQrScans: 0,
@@ -105,20 +111,13 @@ export default function AnalyticsDashboard() {
     averageConversionRate: 0,
   };
 
-  const rawMalls = analyticsData?.malls || [];
-  const rawStores = analyticsData?.stores || [];
-  const rawRecent = analyticsData?.recentActivity || [];
+  const businessInfo = analyticsData?.businessInfo || {
+    title: storedUser?.name || "Business Complex",
+    city: "Primary Location",
+  };
 
-  // Filtered Malls
-  const filteredMalls = useMemo(() => {
-    if (!search) return rawMalls;
-    const q = search.toLowerCase();
-    return rawMalls.filter(
-      (m) =>
-        m.title?.toLowerCase().includes(q) ||
-        m.description?.toLowerCase().includes(q)
-    );
-  }, [rawMalls, search]);
+  const rawStores = useMemo(() => analyticsData?.stores || [], [analyticsData]);
+  const rawRecent = useMemo(() => analyticsData?.recentActivity || [], [analyticsData]);
 
   // Filtered Stores
   const filteredStores = useMemo(() => {
@@ -131,8 +130,23 @@ export default function AnalyticsDashboard() {
     );
   }, [rawStores, search]);
 
-  // Filtered Logs
-  const filteredLogs = useMemo(() => {
+  // Filtered Scans Log (type === 'scan')
+  const rawScansOnly = useMemo(() => {
+    return rawRecent.filter((r) => r.type === "scan");
+  }, [rawRecent]);
+
+  const filteredScans = useMemo(() => {
+    if (!search) return rawScansOnly;
+    const q = search.toLowerCase();
+    return rawScansOnly.filter(
+      (r) =>
+        r.title?.toLowerCase().includes(q) ||
+        r.subtitle?.toLowerCase().includes(q)
+    );
+  }, [rawScansOnly, search]);
+
+  // Filtered All Recent Logs
+  const filteredRecent = useMemo(() => {
     if (!search) return rawRecent;
     const q = search.toLowerCase();
     return rawRecent.filter(
@@ -143,17 +157,17 @@ export default function AnalyticsDashboard() {
   }, [rawRecent, search]);
 
   const tabCounts = {
-    "All Complexes": rawMalls.length,
-    "Shop Counters": rawStores.length,
-    "Real Scans Log": rawRecent.length,
+    "Store Counters": rawStores.length,
+    "Real Scans Log": rawScansOnly.length,
+    "Recent Activity": rawRecent.length,
   };
 
-  // Find max footfall for proportional comparison bars
-  const maxMallFootfall = useMemo(() => {
-    if (!rawMalls.length) return 1;
-    const maxVal = Math.max(...rawMalls.map((m) => m.totalTokens || 0));
+  // Proportional calculation for internal store footfall distribution
+  const maxStoreTokens = useMemo(() => {
+    if (!rawStores.length) return 1;
+    const maxVal = Math.max(...rawStores.map((s) => s.totalTokens || 0));
     return maxVal > 0 ? maxVal : 1;
-  }, [rawMalls]);
+  }, [rawStores]);
 
   const formatTimeAgo = (dateStr) => {
     if (!dateStr) return "Just now";
@@ -192,9 +206,9 @@ export default function AnalyticsDashboard() {
         isCollapsed={isDockCollapsed}
         onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
         activeItem="analytics"
-        onNavigateHome={() => navigate(storedShopId ? `/branddashboard2/${storedShopId}` : "/ownerdashboard")}
-        onNavigateQrStudio={() => navigate(storedShopId ? `/qrcode?mallId=${storedShopId}` : "/qrcode")}
-        onNavigateStoreDirectors={() => navigate(storedShopId ? `/branddashboard2/${storedShopId}` : "/ownerdashboard")}
+        onNavigateHome={() => navigate(effectiveShopId ? `/branddashboard2/${effectiveShopId}` : "/statistics")}
+        onNavigateQrStudio={() => navigate(effectiveShopId ? `/qrcode?mallId=${effectiveShopId}` : "/qrcode")}
+        onNavigateStoreDirectors={() => navigate(effectiveShopId ? `/branddashboard2/${effectiveShopId}` : "/statistics")}
         onNavigateAnalytics={() => {
           fetchAnalytics();
         }}
@@ -227,36 +241,39 @@ export default function AnalyticsDashboard() {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600/10 text-red-700 text-[11px] sm:text-xs font-black uppercase tracking-wider border border-red-600/20 mb-2 shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
             <span>
-              {analyticsData?.businessInfo?.title
-                ? analyticsData.businessInfo.title.toUpperCase()
-                : "BUSINESS PERFORMANCE"}
+              {businessInfo.title
+                ? `${businessInfo.title.toUpperCase()} • LIVE TELEMETRY`
+                : "VENUE PERFORMANCE"}
             </span>
           </div>
 
           <h1 className="text-2xl sm:text-[32px] font-bold tracking-tight text-[#141619] leading-tight m-0">
             <span className="inline-flex items-center flex-wrap gap-2">
-              {analyticsData?.businessInfo?.title || "Business"}
+              {businessInfo.title || "Business"}
               <span className="w-8 h-8 rounded-full bg-white border border-[#e2e5e4] shadow-xs flex items-center justify-center text-gray-900 transition-transform hover:rotate-12 cursor-pointer">
                 <BarChart3 size={17} strokeWidth={2.2} />
               </span>
-              Real Statistics
+              Statistics &amp; Telemetry
             </span>
             <br className="hidden sm:inline" />
             <span className="inline-flex items-center flex-wrap gap-2 sm:mt-1">
               and
               <span className="px-3 py-1 rounded-full bg-[#e5fc73] text-gray-950 text-xs sm:text-sm font-bold shadow-xs flex items-center gap-1.5 transition-transform hover:-rotate-3 cursor-pointer">
                 <Activity size={14} strokeWidth={2.5} />
-                Customer
+                Store Counter
               </span>
-              Footfall Analytics
+              Customer Footfall
             </span>
           </h1>
         </header>
 
-        {/* Real Summary Metric Cards (Clean Light Theme) */}
+        {/* Real Summary Metric Cards (Clean Light Theme) Scoped To This Business */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Card 1: Total Real Tokens Issued */}
-          <div className="bg-[#fafbfb] hover:bg-white border border-gray-200/80 rounded-[22px] p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between">
+          <div
+            data-card-index="0"
+            className="bg-[#fafbfb] hover:bg-white border border-gray-200/80 rounded-[22px] p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between"
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                 VIP Customers Served
@@ -270,41 +287,19 @@ export default function AnalyticsDashboard() {
                 {metrics.totalTokensIssued.toLocaleString()}
               </span>
               <p className="text-xs text-gray-500 mt-1 m-0">
-                Genuine customer tokens issued in DB
+                Customer tokens generated for this venue
               </p>
             </div>
           </div>
 
-          {/* Card 2: Registered Shopping Malls */}
-          <div className="bg-[#fafbfb] hover:bg-white border border-gray-200/80 rounded-[22px] p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between">
+          {/* Card 2: Active Brand Counters (Replaced Multi-Mall card) */}
+          <div
+            data-card-index="1"
+            className="bg-[#fafbfb] hover:bg-white border border-gray-200/80 rounded-[22px] p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between"
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                Shopping Complexes
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center">
-                <Building2 size={16} />
-              </div>
-            </div>
-            <div className="mt-3">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-extrabold text-gray-950 tracking-tight">
-                  {metrics.totalMalls}
-                </span>
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  {metrics.activeMalls} Active
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1 m-0">
-                Registered mall complexes in network
-              </p>
-            </div>
-          </div>
-
-          {/* Card 3: Active Store Counters */}
-          <div className="bg-[#fafbfb] hover:bg-white border border-gray-200/80 rounded-[22px] p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                Store Counters
+                Active Brand Counters
               </span>
               <div className="w-8 h-8 rounded-xl bg-[#e5fc73]/40 text-gray-950 flex items-center justify-center">
                 <Store size={16} />
@@ -313,20 +308,26 @@ export default function AnalyticsDashboard() {
             <div className="mt-3">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-extrabold text-gray-950 tracking-tight">
-                  {metrics.totalStores}
+                  {metrics.activeStores}
                 </span>
-                <span className="text-[11px] font-bold text-gray-900 bg-[#e5fc73] px-2 py-0.5 rounded-full">
+                <span className="text-xs font-semibold text-gray-500">
+                  of {metrics.totalStores} Total Desks
+                </span>
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   Live
                 </span>
               </div>
               <p className="text-xs text-gray-500 mt-1 m-0">
-                Brand store counters &amp; billing desks
+                Store queue counters registered in this mall
               </p>
             </div>
           </div>
 
-          {/* Card 4: Verified Live Scans */}
-          <div className="bg-[#fafbfb] hover:bg-white border border-gray-200/80 rounded-[22px] p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between">
+          {/* Card 3: Verified Live QR Scans */}
+          <div
+            data-card-index="2"
+            className="bg-[#fafbfb] hover:bg-white border border-gray-200/80 rounded-[22px] p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between"
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                 Verified QR Scans
@@ -340,53 +341,87 @@ export default function AnalyticsDashboard() {
                 {metrics.totalQrScans.toLocaleString()}
               </span>
               <p className="text-xs text-gray-500 mt-1 m-0">
-                Live scans captured from customers
+                Live scans captured from customer passes
+              </p>
+            </div>
+          </div>
+
+          {/* Card 4: Daily Conversion Rate */}
+          <div
+            data-card-index="3"
+            className="bg-[#fafbfb] hover:bg-white border border-gray-200/80 rounded-[22px] p-4 sm:p-5 transition-all shadow-xs flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                Scan-to-Queue Ratio
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center">
+                <TrendingUp size={16} />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-extrabold text-gray-950 tracking-tight">
+                  {metrics.averageConversionRate}%
+                </span>
+                <span className="text-[11px] font-bold text-gray-900 bg-[#e5fc73] px-2 py-0.5 rounded-full">
+                  High Engagement
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1 m-0">
+                Conversion rate from QR scans to tokens
               </p>
             </div>
           </div>
         </section>
 
-        {/* Genuine Mall Footfall Comparison Graph */}
+        {/* Store Counters Footfall & Queue Distribution Section (Replaced Multi-Mall Comparison) */}
         <section className="bg-[#fafbfb] border border-gray-200/80 rounded-[24px] p-5 sm:p-6 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-200/60">
             <div>
               <h3 className="text-base font-bold text-gray-900 flex items-center gap-2 m-0">
                 <TrendingUp size={18} className="text-gray-900" />
-                Mall Footfall &amp; Customer Volume Comparison
+                Store Counters Footfall &amp; Queue Distribution
               </h3>
               <p className="text-xs text-gray-500 mt-0.5 m-0">
-                Real customer tokens issued across each shopping complex in the database
+                Real customer tokens issued and queue volume across each brand desk in {businessInfo.title}
               </p>
             </div>
             <span className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 px-3 py-1 rounded-full self-start sm:self-auto">
-              Real MongoDB Telemetry
+              Real Complex Telemetry
             </span>
           </div>
 
-          {/* Visual Bars Comparison */}
+          {/* Visual Bars Comparison for Stores inside this Mall */}
           <div className="mt-4 space-y-3">
-            {rawMalls.map((mall) => {
-              const tokens = mall.totalTokens || 0;
-              const pct = maxMallFootfall > 0 ? Math.round((tokens / maxMallFootfall) * 100) : 0;
-              return (
-                <div key={mall.mallId} className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between text-xs font-semibold text-gray-800">
-                    <span className="truncate max-w-[280px] sm:max-w-md">{mall.title}</span>
-                    <span className="shrink-0 text-gray-900 font-bold">
-                      {tokens} Customers ({mall.storeCount} Counters)
-                    </span>
-                  </div>
-                  <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden p-0.5">
-                    <div
-                      style={{ width: `${Math.max(pct, 4)}%` }}
-                      className="h-full bg-[#111215] rounded-full transition-all duration-500 relative"
-                    >
-                      <div className="absolute right-0 top-0 bottom-0 w-2 bg-[#e5fc73] rounded-r-full" />
+            {rawStores.length === 0 ? (
+              <p className="text-xs text-gray-400 py-4 text-center">
+                No store counters configured for this complex yet.
+              </p>
+            ) : (
+              rawStores.map((store) => {
+                const tokens = store.totalTokens || 0;
+                const pct = maxStoreTokens > 0 ? Math.round((tokens / maxStoreTokens) * 100) : 0;
+                return (
+                  <div key={store.storeId} className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-xs font-semibold text-gray-800">
+                      <span className="truncate max-w-[280px] sm:max-w-md font-bold">{store.name}</span>
+                      <span className="shrink-0 text-gray-900 font-bold">
+                        {tokens} Customers ({store.totalQrScans || 0} Scans)
+                      </span>
+                    </div>
+                    <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden p-0.5">
+                      <div
+                        style={{ width: `${Math.max(pct, 5)}%` }}
+                        className="h-full bg-[#111215] rounded-full transition-all duration-500 relative"
+                      >
+                        <div className="absolute right-0 top-0 bottom-0 w-2 bg-[#e5fc73] rounded-r-full" />
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </section>
 
@@ -427,107 +462,13 @@ export default function AnalyticsDashboard() {
             <SearchBar
               value={search}
               onChange={setSearch}
-              placeholder={
-                activeTab === "Shop Counters"
-                  ? "Search stores, brands..."
-                  : "Search complexes & malls..."
-              }
+              placeholder="Search store counters..."
             />
           </div>
         </div>
 
-        {/* TAB 1: ALL COMPLEXES (MALLS) BREAKDOWN (3 Cards Per Row) */}
-        {activeTab === "All Complexes" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredMalls.map((mall) => (
-              <div
-                key={mall.mallId}
-                className="bg-[#fafbfb] hover:bg-white border border-gray-200/80 hover:border-gray-300 rounded-[22px] p-4 sm:p-5 transition-all duration-200 hover:shadow-md flex flex-col justify-between h-full"
-              >
-                <div>
-                  <div className="flex items-start gap-3.5">
-                    {/* Mall Logo */}
-                    <div className="w-14 h-14 min-w-[56px] rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center shrink-0">
-                      {mall.image ? (
-                        <img
-                          src={mall.image}
-                          alt={mall.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <Building2 size={24} className="text-gray-400" />
-                      )}
-                    </div>
-
-                    {/* Mall Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm sm:text-[15px] font-bold text-gray-900 truncate m-0">
-                          {mall.title || "Untitled Mall"}
-                        </h3>
-                        <span
-                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                            mall.subscriptionStatus === "active"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : "bg-red-50 text-red-700 border border-red-200"
-                          }`}
-                        >
-                          {mall.subscriptionStatus}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-gray-500 truncate mt-1 m-0">
-                        {mall.description || "Complex location"}
-                      </p>
-
-                      {/* Genuine Stats Badges */}
-                      <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                        <span className="text-[11px] font-bold text-gray-900 bg-white border border-gray-200 px-2 py-0.5 rounded-md shadow-2xs">
-                          👥 {mall.totalTokens || 0} Customers
-                        </span>
-                        <span className="text-[11px] font-bold text-gray-900 bg-[#e5fc73] px-2 py-0.5 rounded-md">
-                          🏪 {mall.storeCount} Counters
-                        </span>
-                        {mall.totalQrScans > 0 && (
-                          <span className="text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
-                            📲 {mall.totalQrScans} Scans
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer Link */}
-                <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-gray-200/60">
-                  <span className="text-[11px] text-gray-400">
-                    Live Telemetry Linked
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/branddashboard2/${mall.mallId}`)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#111] hover:text-black bg-white hover:bg-gray-100 border border-gray-200 px-3.5 py-1.5 rounded-full transition-colors cursor-pointer shadow-2xs"
-                  >
-                    <span>View Stores</span>
-                    <ArrowUpRight size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {filteredMalls.length === 0 && (
-              <div className="col-span-full py-12 text-center text-gray-400 text-sm">
-                No complexes found matching "{search}".
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 2: SHOP / STORE COUNTERS (3 Cards Per Row) */}
-        {activeTab === "Shop Counters" && (
+        {/* TAB 1: STORE COUNTERS (3 Cards Per Row) */}
+        {activeTab === "Store Counters" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredStores.map((store) => (
               <div
@@ -570,7 +511,7 @@ export default function AnalyticsDashboard() {
                       </div>
 
                       <p className="text-xs text-gray-500 truncate mt-1 m-0">
-                        📍 {store.mallTitle}
+                        📍 {store.mallTitle || businessInfo.title}
                       </p>
 
                       {/* Genuine Stats Badges */}
@@ -605,31 +546,88 @@ export default function AnalyticsDashboard() {
 
             {filteredStores.length === 0 && (
               <div className="col-span-full py-12 text-center text-gray-400 text-sm">
-                No stores found matching "{search}".
+                No store counters found matching "{search}".
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 3: REAL SCANS LOG */}
+        {/* TAB 2: REAL SCANS LOG */}
         {activeTab === "Real Scans Log" && (
           <div className="bg-[#fafbfb] border border-gray-200/80 rounded-[24px] p-5 sm:p-6 shadow-xs">
             <div className="flex items-center justify-between pb-3 border-b border-gray-200/60 mb-4">
               <div>
                 <h3 className="text-base font-bold text-gray-900 m-0">
-                  Real Scans &amp; Customer Visits Telemetry
+                  Real Scans &amp; Customer Visits for {businessInfo.title}
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5 m-0">
-                  Real records saved directly into the database when customers scan QR passes
+                  Real records saved directly into the database when customers scan QR passes at this complex
                 </p>
               </div>
               <span className="text-xs font-semibold text-gray-700 bg-white border border-gray-200 px-3 py-1 rounded-full">
-                {filteredLogs.length} Real Events
+                {filteredScans.length} Real Scans
               </span>
             </div>
 
             <div className="space-y-2">
-              {filteredLogs.map((log, idx) => (
+              {filteredScans.map((log, idx) => (
+                <div
+                  key={log.id || idx}
+                  className="bg-white border border-gray-200/80 rounded-[16px] p-3.5 flex items-center justify-between gap-4 shadow-2xs"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 text-gray-800">
+                      <QrCode size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs sm:text-[13px] font-bold text-gray-900 truncate">
+                        {log.title}
+                      </div>
+                      <div className="text-[11px] text-gray-500 truncate mt-0.5">
+                        {log.subtitle}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#e5fc73]/40 text-gray-950 border border-[#e5fc73]">
+                      QR Scan
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      {formatTimeAgo(log.time)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {filteredScans.length === 0 && (
+                <div className="py-12 text-center text-gray-400 text-xs">
+                  No scan logs found. Customer scans in real time will appear here automatically.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: RECENT ACTIVITY */}
+        {activeTab === "Recent Activity" && (
+          <div className="bg-[#fafbfb] border border-gray-200/80 rounded-[24px] p-5 sm:p-6 shadow-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200/60 mb-4">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 m-0">
+                  Live Queue &amp; Check-In Activity
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5 m-0">
+                  Real-time timeline of tokens issued and guest scans at {businessInfo.title}
+                </p>
+              </div>
+              <span className="text-xs font-semibold text-gray-700 bg-white border border-gray-200 px-3 py-1 rounded-full">
+                {filteredRecent.length} Events
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {filteredRecent.map((log, idx) => (
                 <div
                   key={log.id || idx}
                   className="bg-white border border-gray-200/80 rounded-[16px] p-3.5 flex items-center justify-between gap-4 shadow-2xs"
@@ -649,7 +647,13 @@ export default function AnalyticsDashboard() {
                   </div>
 
                   <div className="flex items-center gap-2.5 shrink-0">
-                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                    <span
+                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                        log.type === "token"
+                          ? "bg-blue-50 text-blue-800 border border-blue-200"
+                          : "bg-[#e5fc73]/40 text-gray-950 border border-[#e5fc73]"
+                      }`}
+                    >
                       {log.badge}
                     </span>
                     <span className="text-[11px] text-gray-400">
@@ -659,9 +663,9 @@ export default function AnalyticsDashboard() {
                 </div>
               ))}
 
-              {filteredLogs.length === 0 && (
+              {filteredRecent.length === 0 && (
                 <div className="py-12 text-center text-gray-400 text-xs">
-                  No scan logs found. Customer scans in real time will appear here automatically.
+                  No activity found. Live token dispatches and scans will appear here automatically.
                 </div>
               )}
             </div>

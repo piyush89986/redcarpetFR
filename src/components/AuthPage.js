@@ -46,6 +46,13 @@ const AuthPage = () => {
       const userRole = (res.data.role || res.data.user?.role || "admin").toLowerCase().trim();
       const userShopId = res.data.shopId || "";
 
+      if (userRole === "superadmin") {
+        localStorage.clear();
+        throw new Error(
+          "SuperAdmin access has been permanently removed. Only Business Managers and Store Counters can access the system."
+        );
+      }
+
       // Update Redux Store
       dispatch(
         setCredentials({

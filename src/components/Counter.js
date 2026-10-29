@@ -10,10 +10,9 @@ import {
   RefreshCw,
   CheckCircle2,
   MessageSquare,
-  Building2,
-  Store,
   AlertTriangle,
-  QrCode
+  Volume2,
+  Radio
 } from "lucide-react";
 import API_BASE from "../apiConfig";
 import { useAppDispatch, setQueueData as setReduxQueueData, setShopInfo as setReduxShopInfo } from "../redux";
@@ -50,17 +49,38 @@ const Counter = () => {
   const [autoSmsEnabled, setAutoSmsEnabled] = useState(
     JSON.parse(localStorage.getItem("autoSmsEnabled") ?? "true")
   );
-  const [alertAheadSlots, setAlertAheadSlots] = useState(
+  const [alertAheadSlots] = useState(
     Number(localStorage.getItem("alertAheadSlots") || "2")
   );
   const [smsAlertedMap, setSmsAlertedMap] = useState(
     JSON.parse(localStorage.getItem("smsAlertedMap") || "{}")
   );
   const [lastSmsAlert, setLastSmsAlert] = useState(null);
+  const [activeCountdown, setActiveCountdown] = useState(null);
 
   const rawRole = (localStorage.getItem("role") || "").toLowerCase().trim();
   const userRole = rawRole;
   const storedShopId = localStorage.getItem("shopId");
+
+  // Check active TV countdown state periodically
+  const checkCountdown = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/get-countdown/${id}`);
+      if (res.data && res.data.active) {
+        setActiveCountdown(res.data);
+      } else {
+        setActiveCountdown(null);
+      }
+    } catch (err) {
+      // silent
+    }
+  }, [id]);
+
+  useEffect(() => {
+    checkCountdown();
+    const interval = setInterval(checkCountdown, 3500);
+    return () => clearInterval(interval);
+  }, [checkCountdown]);
 
   // Scroll listener for collapsible header
   useEffect(() => {
@@ -83,9 +103,9 @@ const Counter = () => {
     }, 3200);
   }, []);
 
-  // Scoped Access Control
+  // Scoped Access Control (Strictly admin & shop staff, no superadmin)
   useEffect(() => {
-    if (!rawRole || !["admin", "superadmin", "shop admin", "shopadmin", "shop"].includes(rawRole)) {
+    if (!rawRole || !["admin", "shop admin", "shopadmin", "shop"].includes(rawRole)) {
       console.warn("Access Denied: Unauthenticated user attempted to access staff counter queue.");
       navigate("/", { replace: true });
       return;
@@ -151,6 +171,62 @@ const Counter = () => {
     return () => clearInterval(interval);
   }, [fetchData]);
 
+  // Broadcast token live to the TV countdown screen
+  const handleCallToken = async (item) => {
+    try {
+      const storeName = shopInfo?.title || shopInfo?.name || "Store Counter";
+      const mallTitle = shopInfo?.mallTitle || "Complex";
+
+      const payload = {
+        shopId: id,
+        duration: 180,
+        token: String(item.token || ""),
+        name: item.name || "Customer",
+        storeName: storeName,
+        mallTitle: mallTitle,
+      };
+
+      await axios.post(`${API_BASE}/api/start-countdown`, payload);
+      setActiveCountdown({
+        token: String(item.token),
+        name: item.name,
+        storeName,
+        mallTitle,
+        duration: 180,
+      });
+      showToast(`Token #${item.token} is now LIVE on TV Screen`);
+
+      if (item.mobile) {
+        handleSendMessage({
+          number: item.mobile,
+          name: item.name,
+          token: item.token,
+          createdAt: item.createdAt,
+          alertType: "approaching",
+        });
+      }
+    } catch (err) {
+      console.error("Error broadcasting countdown:", err);
+      showToast("Could not broadcast to TV screen.");
+    }
+  };
+
+  // Mark token as served and completed
+  const handleMarkServed = (item) => {
+    const savedClickedState =
+      JSON.parse(localStorage.getItem("clickedState")) || {};
+    savedClickedState[item._id] = true;
+    localStorage.setItem("clickedState", JSON.stringify(savedClickedState));
+
+    setData((prev) =>
+      prev.map((d) => (d._id === item._id ? { ...d, clicked: true } : d))
+    );
+    if (activeCountdown?.token === String(item.token)) {
+      setActiveCountdown(null);
+    }
+    showToast(`Token #${item.token} marked as served`);
+  };
+
   // Send SMS Message
   const handleSendMessage = async ({ number, name, token, createdAt, alertType, message }) => {
     if (!number) return;
@@ -183,7 +259,7 @@ const Counter = () => {
       showToast("No mobile number provided for this guest.");
       return;
     }
-    const res = await handleSendMessage({
+    await handleSendMessage({
       number: customer.mobile,
       name: customer.name,
       token: customer.token,
@@ -195,6 +271,10 @@ const Counter = () => {
     localStorage.setItem("smsAlertedMap", JSON.stringify(updatedAlertMap));
     showToast(`SMS alert sent to ${customer.name || "guest"} (${customer.mobile})`);
   };
+
+  const nextWaitingGuest = useMemo(() => {
+    return data.find((d) => !d.clicked);
+  }, [data]);
 
   // Filtered queue
   const filteredQueue = useMemo(() => {
@@ -257,17 +337,14 @@ const Counter = () => {
     );
   }
 
-  const backDestination =
-    userRole === "superadmin"
-      ? shopInfo?.mallId ? `/branddashboard2/${shopInfo.mallId}` : "/ownerdashboard"
-      : `/branddashboard2/${storedShopId || shopInfo?.mallId || id}`;
+  const backDestination = `/branddashboard2/${storedShopId || shopInfo?.mallId || id}`;
 
-    const isShopStaff =
-      userRole === "shop admin" ||
-      userRole === "shopadmin" ||
-      userRole === "shop";
+  const isShopStaff =
+    userRole === "shop admin" ||
+    userRole === "shopadmin" ||
+    userRole === "shop";
 
-    return (
+  return (
     <div className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[100px] lg:pl-[108px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]">
       {/* Floating Left Dock Sidebar */}
       <DockSidebar
@@ -279,10 +356,8 @@ const Counter = () => {
           if (isShopStaff) {
             navigate(`/${storedShopId || id}/counter`);
             window.scrollTo({ top: 0, behavior: "smooth" });
-          } else if (userRole === "superadmin") {
-            navigate("/ownerdashboard");
           } else {
-            navigate(`/branddashboard2/${storedShopId || shopInfo?.mallId || id}`);
+            navigate(backDestination);
           }
         }}
         onNavigateQrStudio={() => navigate(`/qrcode?shopId=${id}`)}
@@ -291,10 +366,7 @@ const Counter = () => {
         onHelpClick={() => setIsHelpModalOpen(true)}
         onProfileClick={() => setIsProfileModalOpen(true)}
         onSignOut={() => {
-          localStorage.removeItem("token");
-          localStorage.removeItem("role");
-          localStorage.removeItem("shopId");
-          localStorage.removeItem("user");
+          localStorage.clear();
           navigate("/");
         }}
       />
@@ -346,6 +418,54 @@ const Counter = () => {
             Real-time customer tokens for today. Automatically synchronizes with customer mobile passes and TV countdown screens.
           </p>
         </header>
+
+        {/* Dynamic TV Screen Live Calling Banner */}
+        {activeCountdown && (
+          <div className="p-4 rounded-2xl bg-[#0e1015] border border-[#232730] text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#e5fc73]/15 border border-[#e5fc73]/40 flex items-center justify-center text-[#e5fc73] shrink-0 animate-pulse">
+                <Radio size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-red-600 text-white tracking-wider animate-pulse">
+                    LIVE ON TV SCREEN
+                  </span>
+                  <span className="text-xs text-gray-400 font-mono">
+                    {shopInfo?.title || shopInfo?.name || "Counter"}
+                  </span>
+                </div>
+                <div className="text-sm sm:text-base font-extrabold text-white mt-0.5 flex items-center gap-2">
+                  <span className="text-[#e5fc73] font-mono text-base">Token #{activeCountdown.token}</span>
+                  <span>•</span>
+                  <span className="text-gray-200">{activeCountdown.name || "Customer"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+              <button
+                type="button"
+                onClick={() => window.open(`/${id}/countdown`, "_blank")}
+                className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#1d212a] hover:bg-[#272c38] text-gray-200 inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+              >
+                <Tv size={13} />
+                <span>Open TV Tab</span>
+              </button>
+
+              {nextWaitingGuest && (
+                <button
+                  type="button"
+                  onClick={() => handleCallToken(nextWaitingGuest)}
+                  className="px-4 py-1.5 rounded-full text-xs font-black bg-[#e5fc73] hover:bg-[#d8ee65] text-gray-950 inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95"
+                >
+                  <Volume2 size={13} strokeWidth={2.5} />
+                  <span>Call Next (#{nextWaitingGuest.token})</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Dynamic SMS Notification Banner */}
         {lastSmsAlert && (
@@ -474,24 +594,34 @@ const Counter = () => {
                 <tbody className="divide-y divide-gray-100 text-xs">
                   {filteredQueue.map((item, index) => {
                     const isAlerted = !!smsAlertedMap[item._id];
+                    const isOnTv = activeCountdown?.token === String(item.token);
 
                     return (
                       <tr
                         key={item._id || index}
-                        className="hover:bg-[#fafbfb] transition-colors"
+                        className={`transition-colors ${isOnTv ? "bg-[#e5fc73]/10" : "hover:bg-[#fafbfb]"}`}
                       >
                         <td className="py-3 px-4 font-semibold text-gray-400">
                           {index + 1}
                         </td>
 
                         <td className="py-3 px-4 font-bold text-gray-900">
-                          <span className="inline-block px-2.5 py-1 rounded-lg bg-[#e5fc73]/40 border border-[#e5fc73] text-gray-950 font-mono text-xs font-black">
+                          <span className={`inline-block px-2.5 py-1 rounded-lg font-mono text-xs font-black ${
+                            isOnTv
+                              ? "bg-[#e5fc73] text-gray-950 border border-black/20 shadow-xs"
+                              : "bg-[#e5fc73]/40 border border-[#e5fc73] text-gray-950"
+                          }`}>
                             #{item.token || String(index + 1)}
                           </span>
                         </td>
 
                         <td className="py-3 px-4 font-bold text-gray-900">
-                          {item.name || "Walk-in Guest"}
+                          <div className="flex items-center gap-1.5">
+                            <span>{item.name || "Walk-in Guest"}</span>
+                            {isOnTv && (
+                              <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" title="Currently on TV" />
+                            )}
+                          </div>
                         </td>
 
                         <td className="py-3 px-4 text-gray-600 font-medium">
@@ -503,6 +633,11 @@ const Counter = () => {
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-bold text-[11px]">
                               <CheckCircle2 size={12} className="text-gray-500" />
                               Served
+                            </span>
+                          ) : isOnTv ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#e5fc73] text-gray-950 font-black text-[11px] animate-pulse">
+                              <Radio size={12} />
+                              On TV Screen
                             </span>
                           ) : isAlerted ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px]">
@@ -518,15 +653,48 @@ const Counter = () => {
                         </td>
 
                         <td className="py-3 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleSendManualAlert(item)}
-                            title="Send template SMS alert to customer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-gray-800 bg-white hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer shadow-2xs"
-                          >
-                            <MessageSquare size={12} />
-                            <span>{isAlerted ? "Re-alert" : "Alert SMS"}</span>
-                          </button>
+                          <div className="inline-flex items-center gap-1.5 justify-end flex-wrap">
+                            {/* Call to TV Screen */}
+                            {!item.clicked && (
+                              <button
+                                type="button"
+                                onClick={() => handleCallToken(item)}
+                                title="Broadcast this token live onto the TV countdown screen"
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                                  isOnTv
+                                    ? "bg-[#e5fc73] text-gray-950 border border-black/10 font-black"
+                                    : "bg-gray-900 hover:bg-black text-white hover:shadow-xs"
+                                }`}
+                              >
+                                <Volume2 size={12} strokeWidth={2.4} />
+                                <span>{isOnTv ? "Re-Call TV" : "Call on TV"}</span>
+                              </button>
+                            )}
+
+                            {/* Mark Served */}
+                            {!item.clicked && (
+                              <button
+                                type="button"
+                                onClick={() => handleMarkServed(item)}
+                                title="Mark guest as served and completed"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
+                              >
+                                <CheckCircle2 size={12} />
+                                <span>Serve</span>
+                              </button>
+                            )}
+
+                            {/* Send SMS Alert */}
+                            <button
+                              type="button"
+                              onClick={() => handleSendManualAlert(item)}
+                              title="Send template SMS alert to customer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer shadow-2xs"
+                            >
+                              <MessageSquare size={12} />
+                              <span>{isAlerted ? "Re-alert" : "SMS"}</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
