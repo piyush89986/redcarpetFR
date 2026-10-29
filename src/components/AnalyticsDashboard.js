@@ -28,12 +28,14 @@ const TABS = ["All Complexes", "Shop Counters", "Real Scans Log"];
 
 export default function AnalyticsDashboard() {
   const navigate = useNavigate();
+  const storedShopId = localStorage.getItem("shopId");
+  const storedRole = (localStorage.getItem("role") || "admin").toLowerCase().trim();
 
   // Data & State
   const [analyticsData, setAnalyticsData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("All Complexes");
+  const [activeTab, setActiveTab] = useState(storedShopId ? "Shop Counters" : "All Complexes");
 
   // Layout & Modal states
   const [isDockCollapsed, setIsDockCollapsed] = useState(false);
@@ -67,11 +69,14 @@ export default function AnalyticsDashboard() {
     setTimeout(() => setToastMessage(""), 3000);
   }, []);
 
-  // Fetch real analytics from backend
+  // Fetch real analytics from backend (scoped to business if storedShopId exists)
   const fetchAnalytics = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/api/analytics/overview`);
+      const url = storedShopId
+        ? `${API_BASE}/api/analytics/overview?mallId=${storedShopId}`
+        : `${API_BASE}/api/analytics/overview`;
+      const res = await axios.get(url);
       if (res.data?.success) {
         setAnalyticsData(res.data);
       }
@@ -81,7 +86,7 @@ export default function AnalyticsDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [showToast]);
+  }, [storedShopId, showToast]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -179,17 +184,17 @@ export default function AnalyticsDashboard() {
       <HelpModal
         isOpen={isHelpModalOpen}
         onClose={() => setIsHelpModalOpen(false)}
+        role="admin"
       />
 
       {/* Reusable Left Floating Dock Navigation */}
       <DockSidebar
         isCollapsed={isDockCollapsed}
         onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
-        onAddMall={() => navigate("/ownerdashboard")}
         activeItem="analytics"
-        onNavigateHome={() => navigate("/ownerdashboard")}
-        onNavigateQrStudio={() => navigate("/qrcode")}
-        onNavigateStoreDirectors={() => navigate("/ownerdashboard")}
+        onNavigateHome={() => navigate(storedShopId ? `/branddashboard2/${storedShopId}` : "/ownerdashboard")}
+        onNavigateQrStudio={() => navigate(storedShopId ? `/qrcode?mallId=${storedShopId}` : "/qrcode")}
+        onNavigateStoreDirectors={() => navigate(storedShopId ? `/branddashboard2/${storedShopId}` : "/ownerdashboard")}
         onNavigateAnalytics={() => {
           fetchAnalytics();
         }}
@@ -221,12 +226,16 @@ export default function AnalyticsDashboard() {
           {/* RedCarpet Brand Pill */}
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600/10 text-red-700 text-[11px] sm:text-xs font-black uppercase tracking-wider border border-red-600/20 mb-2 shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-            <span>RED CARPET PLATFORM</span>
+            <span>
+              {analyticsData?.businessInfo?.title
+                ? analyticsData.businessInfo.title.toUpperCase()
+                : "BUSINESS PERFORMANCE"}
+            </span>
           </div>
 
           <h1 className="text-2xl sm:text-[32px] font-bold tracking-tight text-[#141619] leading-tight m-0">
             <span className="inline-flex items-center flex-wrap gap-2">
-              Application
+              {analyticsData?.businessInfo?.title || "Business"}
               <span className="w-8 h-8 rounded-full bg-white border border-[#e2e5e4] shadow-xs flex items-center justify-center text-gray-900 transition-transform hover:rotate-12 cursor-pointer">
                 <BarChart3 size={17} strokeWidth={2.2} />
               </span>

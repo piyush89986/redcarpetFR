@@ -260,11 +260,10 @@ const QRGenerator = () => {
       <DockSidebar
         isCollapsed={isDockCollapsed}
         onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
-        onAddMall={() => navigate("/ownerdashboard")}
         activeItem="qr"
-        onNavigateHome={() => navigate("/ownerdashboard")}
+        onNavigateHome={() => navigate(userShopId ? `/branddashboard2/${userShopId}` : "/branddashboard2")}
         onNavigateQrStudio={() => {}}
-        onNavigateStoreDirectors={() => navigate("/ownerdashboard")}
+        onNavigateStoreDirectors={() => navigate(userShopId ? `/branddashboard2/${userShopId}` : "/branddashboard2")}
         onNavigateAnalytics={() => navigate("/analytics")}
         onCloudClick={() => navigate("/analytics")}
         onHelpClick={() => setIsHelpModalOpen(true)}
@@ -549,7 +548,7 @@ const QRGenerator = () => {
       />
 
       {/* Help Modal */}
-      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} role="admin" />
 
       {/* Floating Toast Notification */}
       <Toast message={toastMessage} />

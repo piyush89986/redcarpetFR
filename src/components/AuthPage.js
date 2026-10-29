@@ -23,15 +23,15 @@ const AuthPage = () => {
 
     if (token) {
       const cleanRole = (role || "").toLowerCase().trim();
-      if (cleanRole === "superadmin") {
-        navigate("/ownerdashboard", { replace: true });
-      } else if (cleanRole === "admin" && shopId) {
-        navigate(`/branddashboard2/${shopId}`, { replace: true });
-      } else if (
+      if (
         (cleanRole === "shop admin" || cleanRole === "shopadmin" || cleanRole === "shop") &&
         shopId
       ) {
         navigate(`/${shopId}/counter`, { replace: true });
+      } else if (shopId) {
+        navigate(`/branddashboard2/${shopId}`, { replace: true });
+      } else {
+        navigate("/statistics", { replace: true });
       }
     }
   }, [navigate]);
@@ -56,18 +56,16 @@ const AuthPage = () => {
         })
       );
 
-      if (userRole === "superadmin") {
-        navigate("/ownerdashboard");
-      } else if (userRole === "admin") {
-        navigate(`/branddashboard2/${userShopId}`);
-      } else if (
+      if (
         userRole === "shop admin" ||
         userRole === "shopadmin" ||
         userRole === "shop"
       ) {
         navigate(`/${userShopId}/counter`);
-      } else {
+      } else if (userShopId) {
         navigate(`/branddashboard2/${userShopId}`);
+      } else {
+        navigate("/statistics");
       }
     } catch (error) {
       setErrorMessage(

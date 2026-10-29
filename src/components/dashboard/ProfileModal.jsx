@@ -22,7 +22,7 @@ const ProfileModal = React.memo(({
   }, [user]);
 
   const storedRole = useMemo(() => {
-    return (localStorage.getItem("role") || "superadmin").toLowerCase().trim();
+    return (localStorage.getItem("role") || "admin").toLowerCase().trim();
   }, []);
 
   const avatarImage = storedUser?.image || storedUser?.avatar || null;
@@ -36,25 +36,20 @@ const ProfileModal = React.memo(({
         .substring(0, 2)
         .toUpperCase();
     }
-    if (storedRole === "superadmin") return "SA";
-    if (storedRole === "admin") return "MA";
+    if (storedRole === "admin") return "AD";
     return "ST";
   }, [storedUser, storedRole]);
 
   const displayName =
     storedUser?.name ||
-    (storedRole === "superadmin"
-      ? "RedCarpet Super Admin"
-      : storedRole === "admin"
-      ? "Mall Administrator"
-      : "Counter Staff");
+    (storedRole === "admin"
+      ? "Business Administrator"
+      : "Store Counter Operator");
 
   const displayEmail =
     storedUser?.email ||
-    (storedRole === "superadmin"
-      ? "admin@redcarpet.com"
-      : storedRole === "admin"
-      ? "manager@mall.com"
+    (storedRole === "admin"
+      ? "manager@business.com"
       : "staff@store.com");
 
   if (!isOpen) return null;

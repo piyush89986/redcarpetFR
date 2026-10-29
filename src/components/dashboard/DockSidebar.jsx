@@ -2,13 +2,11 @@ import React, { useState, useMemo } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  Plus,
   Home,
   QrCode,
   BarChart3,
   Store,
   BookOpen,
-  User,
   LogOut
 } from "lucide-react";
 
@@ -42,7 +40,7 @@ const DockSidebar = React.memo(({
   }, [user]);
 
   const storedRole = useMemo(() => {
-    return (localStorage.getItem("role") || "superadmin").toLowerCase().trim();
+    return (localStorage.getItem("role") || "admin").toLowerCase().trim();
   }, []);
 
   const isShopUser = useMemo(() => {
@@ -77,8 +75,7 @@ const DockSidebar = React.memo(({
         .substring(0, 2)
         .toUpperCase();
     }
-    if (storedRole === "superadmin") return "SA";
-    if (storedRole === "admin") return "MA";
+    if (storedRole === "admin") return "AD";
     return "ST";
   }, [storedUser, storedRole]);
 
@@ -136,7 +133,7 @@ const DockSidebar = React.memo(({
           : "h-auto md:h-[calc(100vh-40px)] max-h-[calc(100vh-40px)] overflow-hidden"
       }`}
     >
-      {/* Top Group: Collapse Toggle Arrow, Add Button, Main Nav Icons */}
+      {/* Top Group: Collapse Toggle Arrow, Main Nav Icons */}
       <div className="flex md:flex-col items-center gap-2 md:gap-2.5 w-full justify-around md:justify-start">
         {/* ^ Smooth Collapse / Expand Arrow Button */}
         <button
@@ -152,25 +149,15 @@ const DockSidebar = React.memo(({
           )}
         </button>
 
-        {/* Top Action: + Register New Mall */}
-        <button
-          type="button"
-          onClick={onAddMall}
-          title="Register New Mall"
-          className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-2xl bg-[#24252a] hover:bg-[#e5fc73] hover:text-[#111] text-white border border-[#35373e] hover:border-[#e5fc73] flex items-center justify-center transition-all duration-200 hover:scale-105 cursor-pointer shadow-sm shrink-0"
-        >
-          <Plus size={19} strokeWidth={2.5} />
-        </button>
-
         {/* Nav Items (visible when not collapsed) */}
         {!isCollapsed && (
           <>
             <button
               type="button"
               onClick={onNavigateHome}
-              title="Overview & All Complexes"
+              title="Overview & Brand Dashboard"
               className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0 ${
-                activeItem === "home"
+                activeItem === "home" || activeItem === "stores"
                   ? "bg-[#27282d] text-white shadow-inner relative md:after:content-[''] md:after:block md:after:absolute md:after:-right-1 md:after:w-1 md:after:h-3 md:after:bg-[#e5fc73] md:after:rounded-l"
                   : "text-gray-400 hover:text-white hover:bg-white/5"
               }`}
@@ -191,29 +178,27 @@ const DockSidebar = React.memo(({
               <QrCode size={18} />
             </button>
 
-            {/* Platform Statistics & Analytics — Accessible Exclusively to SuperAdmin */}
-            {storedRole === "superadmin" && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (onNavigateAnalytics) {
-                    onNavigateAnalytics();
-                  } else if (onCloudClick) {
-                    onCloudClick();
-                  } else {
-                    window.location.href = "/analytics";
-                  }
-                }}
-                title="Platform Statistics & Analytics (SuperAdmin Only)"
-                className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0 ${
-                  activeItem === "analytics" || activeItem === "statistics"
-                    ? "bg-[#27282d] text-[#e5fc73] shadow-inner relative md:after:content-[''] md:after:block md:after:absolute md:after:-right-1 md:after:w-1 md:after:h-3 md:after:bg-[#e5fc73] md:after:rounded-l"
-                    : "text-gray-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <BarChart3 size={18} />
-              </button>
-            )}
+            {/* Business Statistics & Footfall Analytics — Accessible to Admin */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigateAnalytics) {
+                  onNavigateAnalytics();
+                } else if (onCloudClick) {
+                  onCloudClick();
+                } else {
+                  window.location.href = "/analytics";
+                }
+              }}
+              title="Business Statistics & Analytics"
+              className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0 ${
+                activeItem === "analytics" || activeItem === "statistics"
+                  ? "bg-[#27282d] text-[#e5fc73] shadow-inner relative md:after:content-[''] md:after:block md:after:absolute md:after:-right-1 md:after:w-1 md:after:h-3 md:after:bg-[#e5fc73] md:after:rounded-l"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <BarChart3 size={18} />
+            </button>
 
             <button
               type="button"
@@ -247,7 +232,7 @@ const DockSidebar = React.memo(({
           <button
             type="button"
             onClick={onProfileClick}
-            title={storedRole === "superadmin" ? "SuperAdmin Profile" : "Account Profile"}
+            title={storedRole === "admin" ? "Business Admin Profile" : "Account Profile"}
             className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-[#30333a] hover:border-[#e5fc73] overflow-hidden transition-all duration-200 hover:scale-105 cursor-pointer bg-[#24252a] shrink-0 flex items-center justify-center"
           >
             {avatarImage && !imgError ? (

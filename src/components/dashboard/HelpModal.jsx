@@ -2,10 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
   BookOpen,
-  Shield,
   Building2,
   Store,
-  ToggleLeft,
   QrCode,
   BarChart3,
   Tv,
@@ -13,14 +11,12 @@ import {
   Bell,
   CheckCircle2,
   Search,
-  RotateCcw,
-  Sparkles
+  RotateCcw
 } from "lucide-react";
 
 const ROLES = [
-  { id: "superadmin", label: "SuperAdmin", icon: Shield, subtitle: "Platform Command Center" },
-  { id: "admin", label: "Mall Manager", icon: Building2, subtitle: "Complex & Brands Administration" },
-  { id: "shop", label: "Store Counter", icon: Store, subtitle: "Live Queue & Token Operations" }
+  { id: "admin", label: "Mall & Business Manager", icon: Building2, subtitle: "Complex & Brands Administration" },
+  { id: "shop", label: "Store Queue Counter", icon: Store, subtitle: "Live Queue & Token Operations" }
 ];
 
 const HelpModal = React.memo(({ isOpen, onClose, role }) => {
@@ -30,18 +26,17 @@ const HelpModal = React.memo(({ isOpen, onClose, role }) => {
       const r = role.toLowerCase().trim();
       if (r.includes("shop")) return "shop";
       if (r === "admin") return "admin";
-      if (r === "superadmin" || r === "owner") return "superadmin";
     }
 
     if (typeof window !== "undefined") {
       const path = window.location.pathname.toLowerCase();
       if (path.includes("/counter")) return "shop";
-      if (path.includes("/branddashboard")) return "admin";
+      if (path.includes("/branddashboard") || path.includes("/analytics") || path.includes("/statistics")) return "admin";
     }
 
     const stored = (localStorage.getItem("role") || "").toLowerCase().trim();
     if (stored.includes("shop")) return "shop";
-    if (stored === "admin") return "admin";
+    return "admin";
   }, [role]);
 
   const [activeRole, setActiveRole] = useState(detectInitialRole);
@@ -114,80 +109,6 @@ const HelpModal = React.memo(({ isOpen, onClose, role }) => {
 
         {/* Dynamic Content Body */}
         <div className="mt-4 overflow-y-auto pr-1 flex-1 space-y-3.5 text-xs sm:text-sm text-gray-600 leading-relaxed">
-          {/* SUPERADMIN GUIDE */}
-          {activeRole === "superadmin" && (
-            <div className="space-y-3 animate-in fade-in duration-200">
-              <div className="p-3 bg-red-50/60 rounded-xl border border-red-100 flex items-start gap-2.5">
-                <Sparkles size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-red-950 font-medium m-0 leading-snug">
-                  <strong>SuperAdmin Command Center:</strong> Manage multiple shopping complexes, global subscriptions, brand stores, and QR marketing.
-                </p>
-              </div>
-
-              <div className="space-y-2.5">
-                <div className="flex gap-2.5 items-start p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Building2 size={14} className="text-gray-800" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 text-xs m-0">Register Shopping Complexes</h4>
-                    <p className="text-[12px] text-gray-600 m-0 mt-0.5">
-                      Click the <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[11px] font-semibold text-gray-800">+</code> button in the left dock to register a new shopping mall, food court, or commercial arcade with custom branding and manager credentials.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2.5 items-start p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <ToggleLeft size={14} className="text-gray-800" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 text-xs m-0">Instant Subscription Toggle</h4>
-                    <p className="text-[12px] text-gray-600 m-0 mt-0.5">
-                      Use the micro-switch on each mall card to immediately activate or suspend real-time queueing services and customer QR access across the complex.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2.5 items-start p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Store size={14} className="text-gray-800" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 text-xs m-0">Manage Brand Stores</h4>
-                    <p className="text-[12px] text-gray-600 m-0 mt-0.5">
-                      Click <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[11px] font-semibold text-gray-800">Manage Stores</code> on any mall card to view its brand counters, menus, and queue operators.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2.5 items-start p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <QrCode size={14} className="text-gray-800" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 text-xs m-0">QR Studio</h4>
-                    <p className="text-[12px] text-gray-600 m-0 mt-0.5">
-                      Access the QR icon in the dock to customize printable QR codes and table standees for customer mobile check-in.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2.5 items-start p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <BarChart3 size={14} className="text-gray-800" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 text-xs m-0">Cross-Mall Footfall Analytics</h4>
-                    <p className="text-[12px] text-gray-600 m-0 mt-0.5">
-                      Open the Analytics tab to monitor customer scan trends, peak check-in hours, and active queues across all registered venues.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* MALL MANAGER (ADMIN) GUIDE */}
           {activeRole === "admin" && (
             <div className="space-y-3 animate-in fade-in duration-200">

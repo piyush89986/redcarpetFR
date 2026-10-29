@@ -378,7 +378,7 @@ const BrandDashboard2 = () => {
           setIsStoreModalOpen(true);
         }}
         activeItem="stores"
-        onNavigateHome={() => navigate("/ownerdashboard")}
+        onNavigateHome={() => navigate(`/branddashboard2/${id}`)}
         onNavigateQrStudio={() => navigate(`/qrcode?mallId=${id}`)}
         onNavigateStoreDirectors={() => {
           setActiveTab("All Stores");

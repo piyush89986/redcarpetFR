@@ -26,20 +26,16 @@ const AppRoutes = () => {
           <Route index element={<AuthPage />} />
           <Route path="/login" element={<AuthPage />} />
 
-          {/* SuperAdmin Platform Routes */}
-          <Route element={<ProtectedRoute allowedRoles={["superadmin"]} />}>
-            <Route path="/ownerdashboard" element={<OwnerDashboard />} />
-            <Route path="/branddashboard" element={<OwnerDashboard />} />
-            <Route path="BrandDashboard" element={<OwnerDashboard />} />
-            <Route path="/analytics" element={<AnalyticsDashboard />} />
-            <Route path="/statistics" element={<AnalyticsDashboard />} />
-          </Route>
-
-          {/* Mall Admin + SuperAdmin Routes (QR Studio, Mall Management & Store Director) */}
+          {/* Mall & Business Administration Routes (Accessible to Admin) */}
           <Route element={<ProtectedRoute allowedRoles={["admin", "superadmin"]} />}>
             <Route path="/branddashboard2/:id" element={<BrandDashboard2 />} />
             <Route path="/shop/:id" element={<BrandDashboard2 />} />
             <Route path="/qrcode" element={<QrCode />} />
+            <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/statistics" element={<AnalyticsDashboard />} />
+            <Route path="/ownerdashboard" element={<OwnerDashboard />} />
+            <Route path="/branddashboard" element={<OwnerDashboard />} />
+            <Route path="BrandDashboard" element={<OwnerDashboard />} />
           </Route>
 
           {/* Staff Counter & Display Editor Routes (Accessible by Shop Admin, Admin, and SuperAdmin) */}
