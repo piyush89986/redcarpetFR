@@ -53,6 +53,15 @@ const AuthPage = () => {
         );
       }
 
+      // Store account disabled flag if store was disabled/soft-deleted by admin
+      if (res.data.accountDisabled) {
+        localStorage.setItem("accountDisabled", "true");
+        localStorage.setItem("storeStatus", res.data.storeStatus || "inactive");
+      } else {
+        localStorage.removeItem("accountDisabled");
+        localStorage.removeItem("storeStatus");
+      }
+
       // Update Redux Store
       dispatch(
         setCredentials({

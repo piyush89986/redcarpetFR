@@ -44,21 +44,21 @@ function Explain() {
   const parentMallTitle = mall?.mallTitle || mall?.complexTitle || null;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#141619] flex flex-col justify-between items-center px-4 py-6 sm:py-10 font-['Plus_Jakarta_Sans',sans-serif] relative overflow-hidden selection:bg-[#e5fc73] selection:text-[#111]">
-      {/* Luxury Backdrop Glows */}
+    <div className="min-h-screen bg-white sm:bg-[#f8fafc] text-[#141619] flex flex-col justify-between items-center px-4 py-4 sm:py-8 font-['Plus_Jakarta_Sans',sans-serif] relative overflow-hidden selection:bg-[#e5fc73] selection:text-[#111]">
+      {/* Luxury Backdrop Glows (Desktop only) */}
       <div
         aria-hidden="true"
-        className="absolute -top-32 -left-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-red-600/[0.07] blur-3xl pointer-events-none"
+        className="hidden sm:block absolute -top-32 -left-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-red-600/[0.07] blur-3xl pointer-events-none"
       />
       <div
         aria-hidden="true"
-        className="absolute -bottom-32 -right-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-[#e5fc73]/30 blur-3xl pointer-events-none"
+        className="hidden sm:block absolute -bottom-32 -right-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-[#e5fc73]/30 blur-3xl pointer-events-none"
       />
 
       {/* REDCARPET Luxury Backdrop Watermark */}
       <div
         aria-hidden="true"
-        className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 text-7xl sm:text-8xl md:text-9xl font-black tracking-[0.28em] text-gray-900/[0.025] select-none pointer-events-none uppercase -z-0 whitespace-nowrap"
+        className="hidden sm:block absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 text-7xl sm:text-8xl md:text-9xl font-black tracking-[0.28em] text-gray-900/[0.025] select-none pointer-events-none uppercase -z-0 whitespace-nowrap"
       >
         REDCARPET
       </div>
@@ -85,8 +85,8 @@ function Explain() {
         </div>
       </header>
 
-      {/* Main VIP Welcome Card */}
-      <main className="w-full max-w-md bg-white border border-gray-200/80 rounded-[32px] p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.06)] relative z-10 flex flex-col items-center text-center">
+      {/* Main Content: Flat on Mobile, Card on Desktop */}
+      <main className="w-full max-w-md bg-transparent sm:bg-white border-0 sm:border border-gray-200/80 rounded-none sm:rounded-[32px] p-0 sm:p-8 shadow-none sm:shadow-[0_20px_50px_rgba(0,0,0,0.06)] relative z-10 flex flex-col items-center text-center">
         {/* Floating Store Badge */}
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-900 to-black text-[#e5fc73] flex items-center justify-center shadow-lg mb-4 border border-black/10">
           <Store size={28} strokeWidth={2.2} />
@@ -153,7 +153,7 @@ function Explain() {
             </div>
             <button
               disabled
-              className="w-full py-4 rounded-2xl bg-gray-200 text-gray-500 font-bold text-sm cursor-not-allowed"
+              className="w-full sm:w-auto sm:min-w-[220px] mx-auto py-2.5 sm:py-3 px-6 sm:px-8 rounded-full bg-gray-200 text-gray-500 font-bold text-xs sm:text-sm cursor-not-allowed flex items-center justify-center"
             >
               Pass Currently Unavailable
             </button>
@@ -161,15 +161,15 @@ function Explain() {
         ) : (
           <Link
             to={`/${id}/information`}
-            className="w-full no-underline"
+            className="w-full no-underline flex justify-center"
           >
             <button
               type="button"
-              className="w-full py-4 px-6 rounded-2xl bg-[#111215] hover:bg-black text-white text-sm font-bold flex items-center justify-center gap-2.5 shadow-lg hover:shadow-xl active:scale-[0.99] transition-all duration-200 cursor-pointer group"
+              className="w-full sm:w-auto sm:min-w-[220px] mx-auto py-2.5 sm:py-3 px-6 sm:px-8 rounded-full bg-[#111215] hover:bg-black text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.99] transition-all cursor-pointer group"
             >
               <span>Get VIP Pass & Cart</span>
               <ArrowRight
-                size={16}
+                size={14}
                 strokeWidth={2.5}
                 className="group-hover:translate-x-1 transition-transform"
               />

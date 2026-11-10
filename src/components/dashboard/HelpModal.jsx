@@ -39,6 +39,7 @@ const HelpModal = React.memo(({ isOpen, onClose, role }) => {
     return "admin";
   }, [role]);
 
+  const isStoreOwner = detectInitialRole === "shop";
   const [activeRole, setActiveRole] = useState(detectInitialRole);
 
   // Sync active role when modal opens
@@ -53,11 +54,9 @@ const HelpModal = React.memo(({ isOpen, onClose, role }) => {
   return (
     <div
       className="fixed inset-0 bg-[#121416]/50 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4"
-      onClick={onClose}
     >
       <div
         className="bg-white rounded-[24px] sm:rounded-[28px] w-full max-w-xl p-5 sm:p-6 shadow-2xl border border-white/80 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center pb-3 border-b border-gray-100 flex-shrink-0">
@@ -67,10 +66,12 @@ const HelpModal = React.memo(({ isOpen, onClose, role }) => {
             </div>
             <div>
               <h3 className="text-base font-bold text-gray-900 m-0 leading-tight">
-                RedCarpet Help & Guides
+                {isStoreOwner ? "Store Counter Help & Guides" : "RedCarpet Help & Guides"}
               </h3>
               <p className="text-[11px] text-gray-500 m-0">
-                Role-based guide for operations & workflows
+                {isStoreOwner
+                  ? "Staff operations guide for live queue & token calling"
+                  : "Role-based guide for operations & workflows"}
               </p>
             </div>
           </div>
@@ -84,28 +85,30 @@ const HelpModal = React.memo(({ isOpen, onClose, role }) => {
           </button>
         </div>
 
-        {/* Role Selector Tabs */}
-        <div className="mt-3 flex gap-1.5 p-1 bg-gray-100/80 rounded-xl flex-shrink-0">
-          {ROLES.map((r) => {
-            const Icon = r.icon;
-            const isActive = activeRole === r.id;
-            return (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setActiveRole(r.id)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 sm:py-2 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-[#111215] text-white shadow-sm"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
-                }`}
-              >
-                <Icon size={14} className={isActive ? "text-red-400" : "text-gray-500"} />
-                <span className="truncate">{r.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Role Selector Tabs (Only displayed for Mall Administrators) */}
+        {!isStoreOwner && (
+          <div className="mt-3 flex gap-1.5 p-1 bg-gray-100/80 rounded-xl flex-shrink-0">
+            {ROLES.map((r) => {
+              const Icon = r.icon;
+              const isActive = activeRole === r.id;
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setActiveRole(r.id)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 sm:py-2 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-[#111215] text-white shadow-sm"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
+                  }`}
+                >
+                  <Icon size={14} className={isActive ? "text-red-400" : "text-gray-500"} />
+                  <span className="truncate">{r.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Dynamic Content Body */}
         <div className="mt-4 overflow-y-auto pr-1 flex-1 space-y-3.5 text-xs sm:text-sm text-gray-600 leading-relaxed">
@@ -161,9 +164,9 @@ const HelpModal = React.memo(({ isOpen, onClose, role }) => {
                     <Tv size={14} className="text-gray-800" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900 text-xs m-0">Live TV Waiting Screens</h4>
+                    <h4 className="font-semibold text-gray-900 text-xs m-0">Live TV Waiting Displays</h4>
                     <p className="text-[12px] text-gray-600 m-0 mt-0.5">
-                      Open <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[11px] font-semibold text-gray-800">/tv/:shopId</code> or the mall multi-brand display on food court Smart TVs to broadcast live calling token numbers to waiting shoppers.
+                      Launch the full-screen queue display on food court monitors or waiting area Smart TVs to announce and broadcast calling token numbers live to waiting shoppers.
                     </p>
                   </div>
                 </div>
@@ -273,7 +276,9 @@ const HelpModal = React.memo(({ isOpen, onClose, role }) => {
         {/* Footer */}
         <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100 flex-shrink-0">
           <span className="text-[11px] text-gray-400">
-            Tip: Switch tabs above to view guides for other roles
+            {!isStoreOwner
+              ? "Tip: Switch tabs above to view guides for other roles"
+              : "Need more assistance? Contact your shopping mall administration office."}
           </span>
           <button
             type="button"

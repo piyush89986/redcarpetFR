@@ -12,7 +12,10 @@ import {
   MessageSquare,
   AlertTriangle,
   Volume2,
-  Radio
+  Radio,
+  ShieldAlert,
+  LogOut,
+  UserPlus
 } from "lucide-react";
 import API_BASE from "../apiConfig";
 import { useAppDispatch, setQueueData as setReduxQueueData, setShopInfo as setReduxShopInfo } from "../redux";
@@ -24,6 +27,7 @@ import TabsNav from "./dashboard/TabsNav";
 import ProfileModal from "./dashboard/ProfileModal";
 import HelpModal from "./dashboard/HelpModal";
 import Toast from "./dashboard/Toast";
+import CustomerRegistrationModal from "./dashboard/CustomerRegistrationModal";
 
 const QUEUE_TABS = ["All Guests", "Waiting in Line", "Called & Served"];
 
@@ -39,10 +43,13 @@ const Counter = () => {
   const [activeTab, setActiveTab] = useState("All Guests");
 
   // Layout & Dock states
-  const [isDockCollapsed, setIsDockCollapsed] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
+    return localStorage.getItem("adminSidebarExpanded") === "true";
+  });
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isRegisterCustomerOpen, setIsRegisterCustomerOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
   // Automation SMS settings
@@ -111,6 +118,12 @@ const Counter = () => {
       return;
     }
 
+    if (rawRole === "admin") {
+      console.warn("Access Denied: Mall Admins do not have direct access to store counter queues.");
+      navigate(storedShopId ? `/branddashboard2/${storedShopId}` : "/", { replace: true });
+      return;
+    }
+
     if (
       (rawRole === "shop admin" || rawRole === "shopadmin" || rawRole === "shop") &&
       storedShopId &&
@@ -119,14 +132,6 @@ const Counter = () => {
     ) {
       console.warn("Access Restricted: Counter staff can only access their assigned store queue.");
       navigate(`/${storedShopId}/counter`, { replace: true });
-    }
-
-    if (rawRole === "admin" && storedShopId && shopInfo) {
-      const mallId = shopInfo.mallId || shopInfo._id;
-      if (mallId && String(mallId) !== String(storedShopId)) {
-        console.warn("Access Restricted: Admin can only view live counters within their own mall.");
-        navigate(`/branddashboard2/${storedShopId}`, { replace: true });
-      }
     }
   }, [rawRole, storedShopId, id, shopInfo, navigate]);
 
@@ -208,6 +213,27 @@ const Counter = () => {
     } catch (err) {
       console.error("Error broadcasting countdown:", err);
       showToast("Could not broadcast to TV screen.");
+    }
+  };
+
+  // Manual Customer Registration Handler for Store Owners
+  const handleRegisterCustomer = async ({ name, mobile, email }) => {
+    try {
+      const res = await axios.post(`${API_BASE}/api/information`, {
+        name,
+        mobile,
+        email,
+        shopid: id,
+      });
+
+      const tokenNumber = res.data?.token || res.data?.newInfo?.token;
+      showToast(`Token #${tokenNumber} issued to ${name}!`);
+      // Immediately refresh the queue data
+      await fetchData();
+      return res.data;
+    } catch (err) {
+      console.error("Error registering walk-in customer:", err);
+      throw err;
     }
   };
 
@@ -305,33 +331,64 @@ const Counter = () => {
     };
   }, [data, waitingCount, calledCount]);
 
-  // If Shop Subscription is Inactive
-  if (shopInfo && shopInfo.subscriptionStatus === "inactive") {
+  // If Shop Subscription is Inactive or Deleted (Admin Disabled Your Account - White Theme, Direct Display)
+  const isAccountDisabledLocally = localStorage.getItem("accountDisabled") === "true";
+  const isAccountDisabledByStatus =
+    shopInfo &&
+    (shopInfo.subscriptionStatus === "inactive" || shopInfo.subscriptionStatus === "deleted");
+
+  if (isAccountDisabledLocally || isAccountDisabledByStatus) {
+    const storeDisplayName =
+      shopInfo?.name ||
+      shopInfo?.title ||
+      (localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user"))?.name : null) ||
+      "Your Store Counter";
     return (
-      <div className="min-h-screen bg-white w-full flex items-center justify-center p-6 font-['Plus_Jakarta_Sans',sans-serif] text-[#141619]">
-        <div className="max-w-md w-full bg-[#fafbfb] border border-red-200/80 rounded-[32px] p-8 sm:p-10 text-center shadow-xl">
-          <div className="w-16 h-16 rounded-3xl bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-5 shadow-sm">
-            <AlertTriangle size={32} />
+      <div className="min-h-screen bg-[#f8fafc] w-full flex items-center justify-center p-4 sm:p-6 font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] selection:bg-[#e5fc73] selection:text-[#111]">
+        <div className="max-w-md sm:max-w-lg w-full bg-white border border-gray-200/80 rounded-[32px] p-6 sm:p-10 text-center shadow-lg relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          {/* Subtle Ambient Red Glow */}
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Icon Badge */}
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-red-50 border border-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 shadow-xs">
+            <ShieldAlert size={36} strokeWidth={2.2} />
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-800 text-[11px] font-bold uppercase tracking-wider mb-3">
-            Counter Paused
+
+          {/* Status Pill */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-red-50 border border-red-200/60 text-red-600 text-[11px] font-black uppercase tracking-[0.18em] mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+            <span>ADMIN ACTION • ACCOUNT DISABLED</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-gray-950 m-0 mb-2">
-            Subscription Has Expired
+
+          {/* Main Heading */}
+          <h2 className="text-2xl sm:text-3xl font-black text-gray-950 m-0 mb-3 tracking-tight">
+            Admin Disabled Your Account
           </h2>
-          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-            Live queue dispatch for <strong>{shopInfo.title || shopInfo.name || "this location"}</strong> is temporarily suspended by platform administration.
+
+          {/* Direct Clean Message (No nested card) */}
+          <p className="text-sm sm:text-[15px] text-gray-600 leading-relaxed mb-2">
+            Live queue dispatch, token calling, and customer passes for{" "}
+            <strong className="text-gray-950 font-bold">{storeDisplayName}</strong> have been turned off by the mall administrator.
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              localStorage.clear();
-              navigate("/");
-            }}
-            className="w-full py-3 rounded-full text-xs sm:text-sm font-bold bg-[#111] hover:bg-gray-800 text-white cursor-pointer transition-colors shadow-md"
-          >
-            Sign Out
-          </button>
+
+          <p className="text-xs sm:text-sm text-gray-400 mb-8 leading-normal">
+            Please contact your mall management office to reactivate this counter account.
+          </p>
+
+          {/* Sign Out Button (Check Status removed as requested) */}
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.clear();
+                navigate("/");
+              }}
+              className="w-full sm:w-auto min-w-[220px] px-8 py-3 rounded-full text-xs sm:text-sm font-bold bg-[#111215] hover:bg-black text-white cursor-pointer transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+            >
+              <LogOut size={15} />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -345,11 +402,14 @@ const Counter = () => {
     userRole === "shop";
 
   return (
-    <div className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[100px] lg:pl-[108px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]">
+    <div
+      className={`min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 transition-all duration-300 ${
+        isSidebarExpanded ? "md:pl-[230px]" : "md:pl-[85px]"
+      } flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]`}
+    >
       {/* Floating Left Dock Sidebar */}
       <DockSidebar
-        isCollapsed={isDockCollapsed}
-        onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
+        onToggleCollapse={(expanded) => setIsSidebarExpanded(expanded)}
         onAddMall={() => navigate(backDestination)}
         activeItem="home"
         onNavigateHome={() => {
@@ -510,6 +570,17 @@ const Counter = () => {
 
           {/* Right Action Controls */}
           <div className="flex items-center gap-2 self-end md:self-auto w-full md:w-auto justify-end flex-wrap">
+            {/* Quick Walk-in Customer Registration Button */}
+            <button
+              type="button"
+              onClick={() => setIsRegisterCustomerOpen(true)}
+              title="Manually register a walk-in customer"
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#111215] hover:bg-black text-white inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95 shrink-0"
+            >
+              <UserPlus size={13} className="text-[#e5fc73]" />
+              <span>+ Customer</span>
+            </button>
+
             {/* Auto-SMS Toggle Button */}
             <button
               type="button"
@@ -572,11 +643,21 @@ const Counter = () => {
             <div className="py-16 px-4 text-center">
               <Users size={36} className="mx-auto mb-2 text-gray-400" />
               <h4 className="text-sm font-bold text-gray-800 m-0">No tokens in this queue</h4>
-              <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+              <p className="text-xs text-gray-500 mt-1 mb-4 max-w-sm mx-auto">
                 {search
                   ? `No guests match "${search}". Try adjusting your keywords.`
-                  : "Customers who scan the store's QR pass will automatically appear here."}
+                  : "Customers who scan the store's QR pass or are registered at the counter will appear here."}
               </p>
+              {!search && (
+                <button
+                  type="button"
+                  onClick={() => setIsRegisterCustomerOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#111215] hover:bg-black text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                >
+                  <UserPlus size={14} className="text-[#e5fc73]" />
+                  <span>Register First Customer</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -706,12 +787,25 @@ const Counter = () => {
         </section>
       </main>
 
-      {/* SuperAdmin / Admin Profile Modal */}
+      {/* Walk-in Customer Registration Modal for Store Owners */}
+      <CustomerRegistrationModal
+        isOpen={isRegisterCustomerOpen}
+        onClose={() => setIsRegisterCustomerOpen(false)}
+        onSubmit={handleRegisterCustomer}
+        storeName={shopInfo?.title || shopInfo?.name || "Store Counter"}
+      />
+
+      {/* Store Owner Profile & Settings Modal */}
       <ProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
-        totalMalls={1}
-        activeLicenses={1}
+        storeInfo={shopInfo}
+        onProfileUpdated={(updatedStore) => {
+          if (updatedStore) {
+            setShopInfo((prev) => ({ ...prev, ...updatedStore }));
+            showToast("Profile settings saved successfully!");
+          }
+        }}
         onSignOut={() => {
           localStorage.clear();
           navigate("/");

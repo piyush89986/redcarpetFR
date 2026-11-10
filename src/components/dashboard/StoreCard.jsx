@@ -1,9 +1,9 @@
 import React, { useCallback } from "react";
-import { Store, Monitor, QrCode, Edit3, Trash2, Mail } from "lucide-react";
+import { QrCode, Edit3, Trash2, Mail } from "lucide-react";
 import ToggleSwitch from "./ToggleSwitch";
 
 const StoreCard = React.memo(
-  ({ item, onToggleStatus, onOpenCounter, onOpenQr, onEdit, onDelete }) => {
+  ({ item, onToggleStatus, onOpenQr, onEdit, onDelete }) => {
     const isActive = item.subscriptionStatus !== "inactive";
 
     const handleToggle = useCallback(
@@ -12,10 +12,6 @@ const StoreCard = React.memo(
       },
       [item, onToggleStatus]
     );
-
-    const handleCounter = useCallback(() => {
-      onOpenCounter(item._id);
-    }, [item._id, onOpenCounter]);
 
     const handleQr = useCallback(() => {
       onOpenQr(item);
@@ -85,19 +81,9 @@ const StoreCard = React.memo(
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={handleCounter}
-              title="Launch Live Counter Queue"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#111215] hover:bg-gray-800 px-3.5 py-1.5 rounded-full transition-colors cursor-pointer shadow-xs"
-            >
-              <Monitor size={13} />
-              Counter
-            </button>
-
-            <button
-              type="button"
               onClick={handleQr}
               title="View / Download QR Pass"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-800 bg-white hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full transition-colors cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-800 bg-white hover:bg-black hover:text-white border border-gray-200 px-3.5 py-1.5 rounded-full transition-colors cursor-pointer shadow-2xs"
             >
               <QrCode size={13} />
               QR Code
@@ -130,7 +116,6 @@ const StoreCard = React.memo(
   (prev, next) =>
     prev.item === next.item &&
     prev.onToggleStatus === next.onToggleStatus &&
-    prev.onOpenCounter === next.onOpenCounter &&
     prev.onOpenQr === next.onOpenQr &&
     prev.onEdit === next.onEdit &&
     prev.onDelete === next.onDelete

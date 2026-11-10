@@ -38,9 +38,12 @@ const AppRoutes = () => {
             <Route path="BrandDashboard" element={<OwnerDashboard />} />
           </Route>
 
-          {/* Staff Counter & Display Editor Routes (Accessible by Shop Admin, Admin, and SuperAdmin) */}
-          <Route element={<ProtectedRoute allowedRoles={["shop admin", "shopadmin", "shop", "admin", "superadmin"]} />}>
+          {/* Staff Counter Queue Routes (Strictly Store Staff & SuperAdmin - Mall Admins cannot directly access store counters) */}
+          <Route element={<ProtectedRoute allowedRoles={["shop admin", "shopadmin", "shop", "superadmin"]} />}>
             <Route path="/:id/counter" element={<Counter />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedRoles={["shop admin", "shopadmin", "shop", "admin", "superadmin"]} />}>
             <Route path="/:id/editdisplay" element={<EditDisplay />} />
           </Route>
 

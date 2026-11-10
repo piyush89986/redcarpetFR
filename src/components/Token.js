@@ -57,27 +57,27 @@ function Token() {
   const guestPhone = localStorage.getItem("phone") || "";
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#141619] flex flex-col justify-between items-center px-4 py-3 sm:py-6 font-['Plus_Jakarta_Sans',sans-serif] relative overflow-hidden selection:bg-[#e5fc73] selection:text-[#111]">
-      {/* Luxury Backdrop Glows */}
+    <div className="min-h-screen bg-white sm:bg-[#f8fafc] text-[#141619] flex flex-col justify-between items-center px-4 py-4 sm:py-6 font-['Plus_Jakarta_Sans',sans-serif] relative overflow-hidden selection:bg-[#e5fc73] selection:text-[#111]">
+      {/* Luxury Backdrop Glows (Desktop only) */}
       <div
         aria-hidden="true"
-        className="absolute -top-32 -left-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-red-600/[0.07] blur-3xl pointer-events-none"
+        className="hidden sm:block absolute -top-32 -left-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-red-600/[0.07] blur-3xl pointer-events-none"
       />
       <div
         aria-hidden="true"
-        className="absolute -bottom-32 -right-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-[#e5fc73]/30 blur-3xl pointer-events-none"
+        className="hidden sm:block absolute -bottom-32 -right-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-[#e5fc73]/30 blur-3xl pointer-events-none"
       />
 
       {/* REDCARPET Luxury Backdrop Watermark */}
       <div
         aria-hidden="true"
-        className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 text-7xl sm:text-8xl md:text-9xl font-black tracking-[0.28em] text-gray-900/[0.025] select-none pointer-events-none uppercase -z-0 whitespace-nowrap"
+        className="hidden sm:block absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 text-7xl sm:text-8xl md:text-9xl font-black tracking-[0.28em] text-gray-900/[0.025] select-none pointer-events-none uppercase -z-0 whitespace-nowrap"
       >
         REDCARPET
       </div>
 
       {/* Top Brand Tag */}
-      <header className="w-full max-w-md flex items-center justify-between mb-2.5 sm:mb-3 z-10">
+      <header className="w-full max-w-md flex items-center justify-between mb-4 sm:mb-5 z-10">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[11px] font-bold">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span>VIP ACCESS GRANTED</span>
@@ -88,8 +88,8 @@ function Token() {
         </div>
       </header>
 
-      {/* Digital Boarding Ticket / VIP Passcard */}
-      <main className="w-full max-w-md bg-white border border-gray-200/90 rounded-[28px] p-5 sm:p-7 shadow-[0_24px_60px_rgba(0,0,0,0.08)] relative z-10 flex flex-col text-center">
+      {/* Digital Boarding Ticket / VIP Passcard: Flat on Mobile, Card on Desktop */}
+      <main className="w-full max-w-md bg-transparent sm:bg-white border-0 sm:border border-gray-200/90 rounded-none sm:rounded-[28px] p-0 sm:p-7 shadow-none sm:shadow-[0_24px_60px_rgba(0,0,0,0.08)] relative z-10 flex flex-col text-center">
         {/* Pass Header */}
         <div className="mb-4">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-bold mb-2">
@@ -155,19 +155,21 @@ function Token() {
         </div>
 
         {/* Primary Action Button */}
-        <button
-          type="button"
-          onClick={() => navigate(`/${id}/countdown`)}
-          className="w-full py-4 bg-[#111215] hover:bg-black text-white text-sm font-bold rounded-2xl flex items-center justify-center gap-2.5 shadow-lg hover:shadow-xl active:scale-[0.99] transition-all duration-200 cursor-pointer group"
-        >
-          <Clock size={16} className="text-[#e5fc73]" />
-          <span>Open Live Service Countdown</span>
-          <ArrowRight
-            size={16}
-            strokeWidth={2.5}
-            className="group-hover:translate-x-1 transition-transform"
-          />
-        </button>
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => navigate(`/${id}/countdown`)}
+            className="w-full sm:w-auto sm:min-w-[240px] py-2.5 sm:py-3 px-6 sm:px-8 bg-[#111215] hover:bg-black text-white text-xs sm:text-sm font-bold rounded-full flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.99] transition-all cursor-pointer group"
+          >
+            <Clock size={15} className="text-[#e5fc73]" />
+            <span>Open Live Service Countdown</span>
+            <ArrowRight
+              size={14}
+              strokeWidth={2.5}
+              className="group-hover:translate-x-1 transition-transform"
+            />
+          </button>
+        </div>
       </main>
 
       {/* Footer */}

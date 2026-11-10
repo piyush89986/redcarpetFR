@@ -41,31 +41,31 @@ const PaymentPage = ({ amount = 120 }) => {
   const storeTitle = mall?.title || mall?.name || "VIP Concierge";
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#141619] flex flex-col justify-between items-center px-4 py-3 sm:py-6 font-['Plus_Jakarta_Sans',sans-serif] relative overflow-hidden selection:bg-[#e5fc73] selection:text-[#111]">
-      {/* Luxury Backdrop Glows */}
+    <div className="min-h-screen bg-white sm:bg-[#f8fafc] text-[#141619] flex flex-col justify-between items-center px-4 py-4 sm:py-6 font-['Plus_Jakarta_Sans',sans-serif] relative overflow-hidden selection:bg-[#e5fc73] selection:text-[#111]">
+      {/* Luxury Backdrop Glows (Desktop only) */}
       <div
         aria-hidden="true"
-        className="absolute -top-32 -left-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-red-600/[0.07] blur-3xl pointer-events-none"
+        className="hidden sm:block absolute -top-32 -left-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-red-600/[0.07] blur-3xl pointer-events-none"
       />
       <div
         aria-hidden="true"
-        className="absolute -bottom-32 -right-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-[#e5fc73]/30 blur-3xl pointer-events-none"
+        className="hidden sm:block absolute -bottom-32 -right-32 w-80 h-80 sm:w-96 sm:h-96 rounded-full bg-[#e5fc73]/30 blur-3xl pointer-events-none"
       />
 
       {/* REDCARPET Luxury Backdrop Watermark */}
       <div
         aria-hidden="true"
-        className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 text-7xl sm:text-8xl md:text-9xl font-black tracking-[0.28em] text-gray-900/[0.025] select-none pointer-events-none uppercase -z-0 whitespace-nowrap"
+        className="hidden sm:block absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 text-7xl sm:text-8xl md:text-9xl font-black tracking-[0.28em] text-gray-900/[0.025] select-none pointer-events-none uppercase -z-0 whitespace-nowrap"
       >
         REDCARPET
       </div>
 
       {/* Top Navbar */}
-      <header className="w-full max-w-md flex items-center justify-between mb-2.5 sm:mb-3 z-10">
+      <header className="w-full max-w-md flex items-center justify-between mb-4 sm:mb-5 z-10">
         <button
           type="button"
           onClick={() => navigate(`/${id}/information`)}
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white hover:bg-gray-100 border border-gray-200 text-gray-700 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
         >
           <ArrowLeft size={12} strokeWidth={2.8} />
           <span>Back</span>
@@ -73,48 +73,20 @@ const PaymentPage = ({ amount = 120 }) => {
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-800 text-[11px] font-bold">
           <Sparkles size={12} className="text-amber-500" />
-          <span>STEP 3 OF 3</span>
+          <span>VIP PASS CONFIRMATION</span>
         </div>
       </header>
 
-      {/* Main Content Card */}
-      <main className="w-full max-w-md bg-white border border-gray-200/80 rounded-[28px] p-5 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.06)] relative z-10 flex flex-col">
+      {/* Main Content: Flat on Mobile, Card on Desktop */}
+      <main className="w-full max-w-md bg-transparent sm:bg-white border-0 sm:border border-gray-200/80 rounded-none sm:rounded-[28px] p-0 sm:p-7 shadow-none sm:shadow-[0_20px_50px_rgba(0,0,0,0.06)] relative z-10 flex flex-col">
         {/* Header */}
-        <div className="text-center mb-4">
+        <div className="text-center mb-5">
           <h1 className="text-xl sm:text-2xl font-black text-gray-950 tracking-tight leading-tight m-0 mb-1">
             {storeTitle}
           </h1>
           <p className="text-xs text-gray-500 max-w-xs mx-auto m-0">
             Confirm your priority reservation to generate your official queue pass.
           </p>
-
-          {/* Stepper Indicator */}
-          <div className="flex items-center justify-center gap-3 mt-3.5">
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[11px] font-bold">
-                ✓
-              </div>
-              <span className="text-xs font-bold text-gray-900">Guest</span>
-            </div>
-
-            <div className="w-8 h-0.5 rounded bg-emerald-500" />
-
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[11px] font-bold">
-                ✓
-              </div>
-              <span className="text-xs font-bold text-gray-900">SMS Verified</span>
-            </div>
-
-            <div className="w-8 h-0.5 rounded bg-black" />
-
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-full bg-[#111215] text-[#e5fc73] flex items-center justify-center text-[11px] font-bold">
-                3
-              </div>
-              <span className="text-xs font-bold text-gray-900">VIP Pass</span>
-            </div>
-          </div>
         </div>
 
         {/* Benefits Cards */}
@@ -163,15 +135,17 @@ const PaymentPage = ({ amount = 120 }) => {
         </div>
 
         {/* Action Button */}
-        <button
-          type="button"
-          onClick={handlePayment}
-          disabled={loading}
-          className="w-full py-4 bg-[#111215] hover:bg-black text-white text-sm font-bold rounded-2xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-[0.99] transition-all duration-200 cursor-pointer disabled:opacity-50"
-        >
-          <span>{loading ? "Activating VIP Pass..." : "Confirm & Issue VIP Pass"}</span>
-          <ArrowRight size={16} strokeWidth={2.5} />
-        </button>
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={handlePayment}
+            disabled={loading}
+            className="w-full sm:w-auto sm:min-w-[240px] py-2.5 sm:py-3 px-6 sm:px-8 bg-[#111215] hover:bg-black text-white text-xs sm:text-sm font-bold rounded-full flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.99] transition-all cursor-pointer disabled:opacity-50"
+          >
+            <span>{loading ? "Activating VIP Pass..." : "Confirm & Issue VIP Pass"}</span>
+            <ArrowRight size={14} strokeWidth={2.5} />
+          </button>
+        </div>
 
         {/* Security Assurance */}
         <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-center gap-1.5 text-[11px] text-gray-400 font-semibold">

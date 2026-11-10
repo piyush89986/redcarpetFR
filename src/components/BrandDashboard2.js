@@ -40,7 +40,9 @@ const BrandDashboard2 = () => {
   const [activeTab, setActiveTab] = useState("All Stores");
 
   // Dock & Scroll Animation State
-  const [isDockCollapsed, setIsDockCollapsed] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
+    return localStorage.getItem("adminSidebarExpanded") === "true";
+  });
   const [isScrolled, setIsScrolled] = useState(false);
 
   // Modals State
@@ -172,46 +174,54 @@ const BrandDashboard2 = () => {
   // Add / Edit Store Form Submit
   const handleStoreFormSubmit = useCallback(
     async (formData, editingItem) => {
-      if (!shop?._id) return;
+      const targetMallId = shop?._id || shop?.id || id;
+      if (!targetMallId) {
+        showToast("Error: Mall ID not identified. Please refresh the page.");
+        return;
+      }
       setIsSubmittingStore(true);
 
-      if (editingItem && editingItem.name) {
+      if (editingItem && (editingItem._id || editingItem.id || editingItem.name)) {
         // Edit Mode
+        const storeIdentifier = editingItem._id || editingItem.id || editingItem.name;
         try {
-          await axios.put(`${API_BASE}/api/shops/update-menu-item/${id}/${editingItem.name}`, {
-            newName: formData.name,
-            newDescription: formData.description,
-            newImage: formData.image,
-            newLink: formData.link,
-            newEmail: formData.email,
-            newPassword: formData.password,
-            newShopConPassword: formData.shopconpassword,
-            newRole: formData.role || "shop admin",
-          });
+          await axios.put(
+            `${API_BASE}/api/shops/update-menu-item/${targetMallId}/${encodeURIComponent(storeIdentifier)}`,
+            {
+              newName: formData.name,
+              newDescription: formData.description,
+              newImage: formData.image,
+              newLink: formData.link,
+              newEmail: formData.email,
+              newPassword: formData.password,
+              newShopConPassword: formData.shopconpassword,
+              newRole: formData.role || "shop admin",
+            }
+          );
           setIsStoreModalOpen(false);
           setEditingStore(null);
-          fetchShopDetails();
+          await fetchShopDetails();
           showToast(`Store "${formData.name}" updated successfully!`);
         } catch (err) {
           console.error("Error updating brand:", err);
-          alert("Failed to update store: " + (err.response?.data?.message || err.message));
+          throw err;
         } finally {
           setIsSubmittingStore(false);
         }
       } else {
         // Add Mode
         try {
-          await axios.post(`${API_BASE}/api/shops/${shop._id}/menu`, {
+          await axios.post(`${API_BASE}/api/shops/${targetMallId}/menu`, {
             ...formData,
             role: "shop admin",
           });
           setIsStoreModalOpen(false);
           setEditingStore(null);
-          fetchShopDetails();
+          await fetchShopDetails();
           showToast(`Store "${formData.name}" created successfully!`);
         } catch (err) {
           console.error("Error adding brand:", err.response?.data || err.message);
-          alert("Failed to add store: " + (err.response?.data?.message || err.message));
+          throw err;
         } finally {
           setIsSubmittingStore(false);
         }
@@ -220,17 +230,25 @@ const BrandDashboard2 = () => {
     [shop, id, fetchShopDetails, showToast]
   );
 
-  // Delete Store Handler
+  // Delete Store Handler (Permanently deletes store and revokes credentials)
   const handleDeleteStore = useCallback(
     async (item) => {
-      if (window.confirm(`Are you sure you want to delete "${item.name}" from this mall?`)) {
+      const storeName = item.name || "Store";
+      const storeId = item._id || item.id || item.name;
+      if (
+        window.confirm(
+          `Are you sure you want to permanently delete "${storeName}" from this mall? This will revoke counter login access and remove all counter data.`
+        )
+      ) {
         try {
-          await axios.delete(`${API_BASE}/api/shops/delete-menu-item/${id}/${item.name}`);
+          await axios.delete(
+            `${API_BASE}/api/shops/delete-menu-item/${id}/${encodeURIComponent(storeId)}`
+          );
           fetchShopDetails();
-          showToast(`"${item.name}" deleted from complex.`);
+          showToast(`"${storeName}" permanently deleted from complex.`);
         } catch (err) {
           console.error("Error deleting shop:", err);
-          alert("Failed to delete store.");
+          alert("Failed to delete store: " + (err.response?.data?.message || err.message));
         }
       }
     },
@@ -257,13 +275,15 @@ const BrandDashboard2 = () => {
       showToast(`${item.name} set to ${next.toUpperCase()}`);
 
       try {
-        await axios.put(`${API_BASE}/api/shops/update-menu-item/${id}/${item.name}`, {
+        const storeIdentifier = item._id || item.id || item.name;
+        await axios.put(`${API_BASE}/api/shops/update-menu-item/${id}/${encodeURIComponent(storeIdentifier)}`, {
           newName: item.name,
           newDescription: item.description,
           newImage: item.image,
           newLink: item.link,
           newEmail: item.email,
           subscriptionStatus: next,
+          status: next,
         });
       } catch (err) {
         console.error("Error toggling store status:", err);
@@ -282,8 +302,12 @@ const BrandDashboard2 = () => {
     [id, showToast]
   );
 
-  // Filtered Stores Memo
-  const menuItems = useMemo(() => shop?.menuItems || [], [shop]);
+  // Filtered Stores Memo (Soft-deleted stores are kept in DB for login enforcement but hidden from admin directory)
+  const menuItems = useMemo(() => {
+    return (shop?.menuItems || []).filter(
+      (m) => m.subscriptionStatus !== "deleted"
+    );
+  }, [shop]);
 
   const filteredStores = useMemo(() => {
     return menuItems.filter((store) => {
@@ -368,11 +392,14 @@ const BrandDashboard2 = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[100px] lg:pl-[108px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]">
+    <div
+      className={`min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 transition-all duration-300 ${
+        isSidebarExpanded ? "md:pl-[230px]" : "md:pl-[85px]"
+      } flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]`}
+    >
       {/* Reusable Left Floating Dock Sidebar */}
       <DockSidebar
-        isCollapsed={isDockCollapsed}
-        onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
+        onToggleCollapse={(expanded) => setIsSidebarExpanded(expanded)}
         onAddMall={() => {
           setEditingStore(null);
           setIsStoreModalOpen(true);
@@ -524,7 +551,6 @@ const BrandDashboard2 = () => {
                   <StoreCard
                     item={item}
                     onToggleStatus={handleToggleStoreStatus}
-                    onOpenCounter={(storeId) => navigate(`/${storeId}/counter`)}
                     onOpenQr={handleOpenQrModal}
                     onEdit={(storeToEdit) => {
                       setEditingStore(storeToEdit);

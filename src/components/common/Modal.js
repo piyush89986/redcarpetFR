@@ -24,11 +24,10 @@ const Modal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="rc-modal-backdrop" onClick={onClose}>
+    <div className="rc-modal-backdrop">
       <div
         className="rc-modal-card"
         style={{ maxWidth }}
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="rc-modal-header">
           <div>

@@ -62,11 +62,9 @@ const MallModal = React.memo(({ isOpen, initialData = null, onClose, onSubmit, i
   return (
     <div
       className="fixed inset-0 bg-[#121416]/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
     >
       <div
         className="bg-white rounded-[28px] w-full max-w-lg p-6 sm:p-7 shadow-2xl border border-white/80 animate-in fade-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">

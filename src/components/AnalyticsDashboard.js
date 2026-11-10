@@ -7,7 +7,6 @@ import {
   QrCode,
   Users,
   RefreshCw,
-  ArrowUpRight,
   TrendingUp,
   Activity
 } from "lucide-react";
@@ -44,7 +43,9 @@ export default function AnalyticsDashboard() {
   const [activeTab, setActiveTab] = useState("Store Counters");
 
   // Layout & Modal states
-  const [isDockCollapsed, setIsDockCollapsed] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
+    return localStorage.getItem("adminSidebarExpanded") === "true";
+  });
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -98,25 +99,37 @@ export default function AnalyticsDashboard() {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
-  // Real Database Metrics for this business
-  const metrics = analyticsData?.metrics || {
-    totalMalls: 1,
-    activeMalls: 1,
-    totalStores: 0,
-    activeStores: 0,
-    totalQrScans: 0,
-    todayQrScans: 0,
-    totalTokensIssued: 0,
-    todayTokensIssued: 0,
-    averageConversionRate: 0,
-  };
+  const rawStores = useMemo(() => {
+    return analyticsData?.stores || analyticsData?.storesAnalytics || [];
+  }, [analyticsData]);
+
+  // Real Database Metrics for this business (supports both metrics and summary keys)
+  const metrics = useMemo(() => {
+    const m = analyticsData?.metrics;
+    const s = analyticsData?.summary;
+    const activeCount = rawStores.filter(
+      (st) => (st.subscriptionStatus || "active") !== "inactive"
+    ).length;
+
+    return {
+      totalMalls: m?.totalMalls ?? s?.totalMalls ?? 1,
+      activeMalls: m?.activeMalls ?? s?.activeMalls ?? 1,
+      totalStores: m?.totalStores ?? s?.totalStores ?? rawStores.length,
+      activeStores: m?.activeStores ?? s?.activeStores ?? activeCount,
+      totalQrScans: m?.totalQrScans ?? s?.totalScans ?? 0,
+      todayQrScans: m?.todayQrScans ?? s?.todayScans ?? 0,
+      totalTokensIssued: m?.totalTokensIssued ?? s?.totalTokens ?? 0,
+      todayTokensIssued: m?.todayTokensIssued ?? s?.todayTokens ?? 0,
+      averageConversionRate:
+        m?.averageConversionRate ?? s?.overallConversionRate ?? 0,
+    };
+  }, [analyticsData, rawStores]);
 
   const businessInfo = analyticsData?.businessInfo || {
     title: storedUser?.name || "Business Complex",
     city: "Primary Location",
   };
 
-  const rawStores = useMemo(() => analyticsData?.stores || [], [analyticsData]);
   const rawRecent = useMemo(() => analyticsData?.recentActivity || [], [analyticsData]);
 
   // Filtered Stores
@@ -182,7 +195,11 @@ export default function AnalyticsDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[100px] lg:pl-[108px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]">
+    <div
+      className={`min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 transition-all duration-300 ${
+        isSidebarExpanded ? "md:pl-[230px]" : "md:pl-[85px]"
+      } flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]`}
+    >
       {/* Toast Notification */}
       <Toast message={toastMessage} isVisible={!!toastMessage} />
 
@@ -203,8 +220,7 @@ export default function AnalyticsDashboard() {
 
       {/* Reusable Left Floating Dock Navigation */}
       <DockSidebar
-        isCollapsed={isDockCollapsed}
-        onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
+        onToggleCollapse={(expanded) => setIsSidebarExpanded(expanded)}
         activeItem="analytics"
         onNavigateHome={() => navigate(effectiveShopId ? `/branddashboard2/${effectiveShopId}` : "/statistics")}
         onNavigateQrStudio={() => navigate(effectiveShopId ? `/qrcode?mallId=${effectiveShopId}` : "/qrcode")}
@@ -527,19 +543,15 @@ export default function AnalyticsDashboard() {
                   </div>
                 </div>
 
-                {/* Footer Link */}
+                {/* Counter Details Info (Admin does not access store queue directly) */}
                 <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-gray-200/60">
-                  <span className="text-[11px] text-gray-400">
+                  <span className="text-[11px] font-semibold text-gray-400">
                     Counter Desk
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/${store.storeId}/counter`)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#111] hover:text-black bg-white hover:bg-gray-100 border border-gray-200 px-3.5 py-1.5 rounded-full transition-colors cursor-pointer shadow-2xs"
-                  >
-                    <span>Open Live Counter</span>
-                    <ArrowUpRight size={13} />
-                  </button>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
+                    <Store size={12} />
+                    <span>{store.category || "Active Counter"}</span>
+                  </span>
                 </div>
               </div>
             ))}

@@ -41,7 +41,9 @@ const QRGenerator = () => {
   const [copied, setCopied] = useState(false);
 
   // Layout states
-  const [isDockCollapsed, setIsDockCollapsed] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
+    return localStorage.getItem("adminSidebarExpanded") === "true";
+  });
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -240,40 +242,223 @@ const QRGenerator = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Download High-Res PNG
+  // Download High-Res Standee Pass PNG
   const handleDownload = () => {
-    const canvas = qrRef.current ? qrRef.current.querySelector("canvas") : null;
-    if (!canvas) return;
+    const qrCanvas = qrRef.current ? qrRef.current.querySelector("canvas") : null;
+    if (!qrCanvas) return;
 
-    const url = canvas.toDataURL("image/png");
+    // Create an offscreen high-res canvas (760 x 940 at crisp quality)
+    const exportCanvas = document.createElement("canvas");
+    const width = 760;
+    const height = 940;
+    exportCanvas.width = width;
+    exportCanvas.height = height;
+    const ctx = exportCanvas.getContext("2d");
+
+    // 1. Crisp White Background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    // 2. Rounded Outer Card Border
+    ctx.strokeStyle = "#E5E7EB";
+    ctx.lineWidth = 4;
+    if (typeof ctx.roundRect === "function") {
+      ctx.beginPath();
+      ctx.roundRect(18, 18, width - 36, height - 36, 24);
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(18, 18, width - 36, height - 36);
+    }
+
+    // 3. Top Branding Pill
+    const pillText = "REDCARPET • DIGITAL QUEUE PASS";
+    ctx.font = "bold 14px 'Plus Jakarta Sans', system-ui, sans-serif";
+    const pillWidth = ctx.measureText(pillText).width + 36;
+    const pillX = (width - pillWidth) / 2;
+    const pillY = 50;
+    ctx.fillStyle = "#FEF2F2";
+    if (typeof ctx.roundRect === "function") {
+      ctx.beginPath();
+      ctx.roundRect(pillX, pillY, pillWidth, 34, 17);
+      ctx.fill();
+      ctx.strokeStyle = "#FECDD3";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else {
+      ctx.fillRect(pillX, pillY, pillWidth, 34);
+    }
+
+    // Pill text
+    ctx.fillStyle = "#DC2626";
+    ctx.textAlign = "center";
+    ctx.fillText(pillText, width / 2, pillY + 22);
+
+    // 4. Target Name
+    ctx.fillStyle = "#111827";
+    ctx.font = "bold 34px 'Plus Jakarta Sans', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    const targetName = selectedTarget?.name || "RedCarpet Pass";
+    ctx.fillText(targetName, width / 2, 136);
+
+    // 5. Mall / Category Subtitle
+    ctx.fillStyle = "#6B7280";
+    ctx.font = "500 17px 'Plus Jakarta Sans', system-ui, sans-serif";
+    const subtitle = selectedTarget?.mallName || selectedTarget?.category || "Counter & Standee VIP Pass";
+    const displaySubtitle = subtitle.length > 55 ? subtitle.slice(0, 52) + "..." : subtitle;
+    ctx.fillText(displaySubtitle, width / 2, 168);
+
+    // 6. QR Code Frame / Quiet Zone Box
+    const qrBoxSize = 480;
+    const qrBoxX = (width - qrBoxSize) / 2;
+    const qrBoxY = 200;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 3;
+    if (typeof ctx.roundRect === "function") {
+      ctx.beginPath();
+      ctx.roundRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 24);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize);
+      ctx.strokeRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize);
+    }
+
+    // Draw QR image in center with ample quiet zone padding
+    const qrInnerSize = 400;
+    const qrInnerX = (width - qrInnerSize) / 2;
+    const qrInnerY = qrBoxY + (qrBoxSize - qrInnerSize) / 2;
+    ctx.drawImage(qrCanvas, qrInnerX, qrInnerY, qrInnerSize, qrInnerSize);
+
+    // 7. Instructions below QR
+    ctx.fillStyle = "#111827";
+    ctx.font = "bold 20px 'Plus Jakarta Sans', system-ui, sans-serif";
+    ctx.fillText("SCAN WITH CAMERA TO ENTER QUEUE", width / 2, 730);
+
+    ctx.fillStyle = "#4B5563";
+    ctx.font = "500 15px 'Plus Jakarta Sans', system-ui, sans-serif";
+    ctx.fillText("Point your phone camera to get a live VIP digital token", width / 2, 762);
+
+    // 8. 3-Step Guide
+    ctx.fillStyle = "#6B7280";
+    ctx.font = "600 13px 'Plus Jakarta Sans', system-ui, sans-serif";
+    ctx.fillText("1. SCAN QR   •   2. TRACK LIVE TOKEN   •   3. ENTER ON CALL", width / 2, 810);
+
+    // 9. Footer Watermark
+    ctx.fillStyle = "#DC2626";
+    ctx.font = "bold 13px 'Plus Jakarta Sans', system-ui, sans-serif";
+    ctx.fillText("REDCARPET VIRTUAL QUEUE SYSTEM", width / 2, 885);
+
+    // Export PNG
+    const url = exportCanvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    const targetName = (selectedTarget?.name || "redcarpet").toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    a.download = `${targetName}-qr-pass.png`;
+    const fileSlug = (selectedTarget?.name || "redcarpet").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    a.download = `${fileSlug}-qr-standee.png`;
     a.click();
     showToast("Downloaded QR Code PNG!");
   };
 
   return (
-    <div className="min-h-screen bg-white w-full py-2 sm:py-3 lg:py-4 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-14 md:pt-3.5 md:pl-[100px] lg:pl-[108px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]">
+    <div
+      className={`qr-page-container min-h-screen bg-white w-full py-2 sm:py-3 lg:py-4 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-14 md:pt-3.5 transition-all duration-300 ${
+        isSidebarExpanded ? "md:pl-[230px]" : "md:pl-[85px]"
+      } flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]`}
+    >
+      {/* Print-specific style rules to isolate and center only the counter standee card */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
+          }
+          html, body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .no-print,
+          .print\\:hidden,
+          header,
+          aside,
+          nav,
+          .left-studio-controls,
+          .dock-sidebar-container,
+          .toast-container,
+          button {
+            display: none !important;
+          }
+          .qr-page-container {
+            padding: 0 !important;
+            margin: 0 !important;
+            min-height: auto !important;
+            width: 100% !important;
+            background: #ffffff !important;
+            display: block !important;
+          }
+          .qr-main-canvas {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+          }
+          .qr-studio-grid {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .qr-standee-col {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: 100% !important;
+            margin: 0 auto !important;
+            padding: 10mm 0 !important;
+          }
+          .qr-standee-card {
+            width: 380px !important;
+            max-width: 90% !important;
+            margin: 0 auto !important;
+            padding: 36px 30px !important;
+            border: 3px solid #111827 !important;
+            border-radius: 28px !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            text-align: center !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+          }
+        }
+      `}</style>
+
       {/* Floating Left Dock Navigation */}
-      <DockSidebar
-        isCollapsed={isDockCollapsed}
-        onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
-        activeItem="qr"
-        onNavigateHome={() => navigate(userShopId ? `/branddashboard2/${userShopId}` : "/branddashboard2")}
-        onNavigateQrStudio={() => {}}
-        onNavigateStoreDirectors={() => navigate(userShopId ? `/branddashboard2/${userShopId}` : "/branddashboard2")}
-        onNavigateAnalytics={() => navigate("/analytics")}
-        onCloudClick={() => navigate("/analytics")}
-        onHelpClick={() => setIsHelpModalOpen(true)}
-        onProfileClick={() => setIsProfileModalOpen(true)}
-      />
+      <div className="no-print print:hidden">
+        <DockSidebar
+          onToggleCollapse={(expanded) => setIsSidebarExpanded(expanded)}
+          activeItem="qr"
+          onNavigateHome={() => navigate(userShopId ? `/branddashboard2/${userShopId}` : "/branddashboard2")}
+          onNavigateQrStudio={() => {}}
+          onNavigateStoreDirectors={() => navigate(userShopId ? `/branddashboard2/${userShopId}` : "/branddashboard2")}
+          onNavigateAnalytics={() => navigate("/analytics")}
+          onCloudClick={() => navigate("/analytics")}
+          onHelpClick={() => setIsHelpModalOpen(true)}
+          onProfileClick={() => setIsProfileModalOpen(true)}
+        />
+      </div>
 
       {/* Main Full-Screen Canvas */}
-      <main className="flex-1 flex flex-col gap-3 sm:gap-4 min-w-0 w-full max-w-6xl mx-auto">
+      <main className="qr-main-canvas flex-1 flex flex-col gap-3 sm:gap-4 min-w-0 w-full max-w-6xl mx-auto">
         {/* Luxury Header Area with REDCARPET Backdrop Watermark */}
-        <header className="relative overflow-hidden pt-0 pb-0.5">
+        <header className="no-print print:hidden relative overflow-hidden pt-0 pb-0.5">
           <div
             aria-hidden="true"
             className="absolute -top-7 -left-2 text-6xl sm:text-7xl lg:text-[76px] font-black tracking-[0.25em] text-red-600/[0.05] select-none pointer-events-none uppercase -z-10 whitespace-nowrap leading-none"
@@ -316,9 +501,9 @@ const QRGenerator = () => {
         </header>
 
         {/* Studio Content Grid: Configuration Form & Live Preview Standee */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
+        <div className="qr-studio-grid grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
           {/* Left Column: Target Selector & Settings (7 cols) */}
-          <div className="lg:col-span-7 bg-[#fafbfb] border border-gray-200/80 rounded-[24px] p-4 sm:p-5 flex flex-col gap-3.5 shadow-xs">
+          <div className="no-print print:hidden left-studio-controls lg:col-span-7 bg-[#fafbfb] border border-gray-200/80 rounded-[24px] p-4 sm:p-5 flex flex-col gap-3.5 shadow-xs">
             {/* Target Selector Dropdown */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
@@ -485,49 +670,59 @@ const QRGenerator = () => {
           </div>
 
           {/* Right Column: Live Printable Standee Preview (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col items-center">
-            <div className="w-full max-w-sm bg-white border border-gray-200 rounded-[24px] p-4 sm:p-5 shadow-md flex flex-col items-center text-center relative overflow-hidden">
+          <div className="qr-standee-col lg:col-span-5 flex flex-col items-center w-full">
+            <div className="qr-standee-card w-full max-w-sm bg-white border border-gray-200 rounded-[24px] p-5 sm:p-6 shadow-md flex flex-col items-center text-center relative overflow-hidden">
               {/* Standee Branding Pill */}
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600/10 text-red-700 text-[10px] font-black uppercase tracking-wider border border-red-600/20 mb-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600/10 text-red-700 text-[10px] font-black uppercase tracking-wider border border-red-600/20 mb-3">
                 <Sparkles size={11} className="text-red-600" />
                 <span>OFFICIAL QUEUE STANDEE</span>
               </div>
 
               {/* Target Name */}
-              <h3 className="text-base font-black text-gray-900 m-0 mb-0.5 max-w-xs truncate">
+              <h3 className="text-lg sm:text-xl font-black text-gray-900 m-0 mb-1 max-w-xs truncate">
                 {selectedTarget?.name || "RedCarpet Pass"}
               </h3>
-              <p className="text-xs text-gray-500 m-0 mb-2.5 max-w-xs truncate">
-                {selectedTarget?.mallName || "Shopping Complex"}
+              <p className="text-xs text-gray-500 m-0 mb-3 max-w-xs truncate">
+                {selectedTarget?.mallName || selectedTarget?.category || "Shopping Complex"}
               </p>
 
               {/* High-Resolution QR Canvas */}
-              <div className="p-2.5 bg-white rounded-2xl border-2 border-[#141619] shadow-sm mb-2.5">
-                <div ref={qrRef}>
+              <div className="p-3 bg-white rounded-2xl border-2 border-[#141619] shadow-sm mb-3">
+                <div ref={qrRef} className="flex justify-center items-center">
                   <QRCodeCanvas
                     value={text || "https://redcarpet.com"}
-                    size={175}
+                    size={200}
                     level="H"
                     fgColor="#000000"
                     bgColor="#ffffff"
+                    includeMargin={true}
                   />
                 </div>
               </div>
 
-              <div className="text-[11px] font-bold text-gray-800 uppercase tracking-wider mb-0.5">
+              <div className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-1">
                 Scan with Camera
               </div>
-              <div className="text-[10px] text-gray-400 max-w-xs">
+              <div className="text-[11px] text-gray-500 max-w-xs leading-relaxed mb-3">
                 To join the VIP queue &amp; track live counter token
+              </div>
+
+              {/* 3-Step Walkthrough Guide for Print & Display */}
+              <div className="pt-2.5 pb-1 border-t border-gray-100 w-full flex justify-between items-center text-[10px] text-gray-400 font-semibold px-2">
+                <span>1. Scan QR</span>
+                <span>•</span>
+                <span>2. Get Token</span>
+                <span>•</span>
+                <span>3. Enter on Call</span>
               </div>
 
               {/* Print Standee Action */}
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="mt-3 w-full py-2 rounded-full bg-gray-100 hover:bg-black hover:text-white text-gray-800 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                className="no-print print:hidden mt-3 w-full py-2.5 rounded-full bg-gray-100 hover:bg-black hover:text-white text-gray-800 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
               >
-                <Printer size={13} />
+                <Printer size={14} />
                 <span>Print Counter Standee</span>
               </button>
             </div>
@@ -536,22 +731,24 @@ const QRGenerator = () => {
       </main>
 
       {/* SuperAdmin / Admin Profile Modal */}
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        totalMalls={shopsData.length}
-        activeLicenses={shopsData.length}
-        onSignOut={() => {
-          localStorage.clear();
-          navigate("/");
-        }}
-      />
+      <div className="no-print print:hidden">
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          totalMalls={shopsData.length}
+          activeLicenses={shopsData.length}
+          onSignOut={() => {
+            localStorage.clear();
+            navigate("/");
+          }}
+        />
 
-      {/* Help Modal */}
-      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} role="admin" />
+        {/* Help Modal */}
+        <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} role="admin" />
 
-      {/* Floating Toast Notification */}
-      <Toast message={toastMessage} />
+        {/* Floating Toast Notification */}
+        <Toast message={toastMessage} />
+      </div>
     </div>
   );
 };
