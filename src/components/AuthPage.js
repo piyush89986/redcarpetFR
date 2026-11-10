@@ -23,7 +23,9 @@ const AuthPage = () => {
 
     if (token) {
       const cleanRole = (role || "").toLowerCase().trim();
-      if (
+      if (cleanRole === "superadmin") {
+        navigate("/ownerdashboard", { replace: true });
+      } else if (
         (cleanRole === "shop admin" || cleanRole === "shopadmin" || cleanRole === "shop") &&
         shopId
       ) {
@@ -46,13 +48,6 @@ const AuthPage = () => {
       const userRole = (res.data.role || res.data.user?.role || "admin").toLowerCase().trim();
       const userShopId = res.data.shopId || "";
 
-      if (userRole === "superadmin") {
-        localStorage.clear();
-        throw new Error(
-          "SuperAdmin access has been permanently removed. Only Business Managers and Store Counters can access the system."
-        );
-      }
-
       // Store account disabled flag if store was disabled/soft-deleted by admin
       if (res.data.accountDisabled) {
         localStorage.setItem("accountDisabled", "true");
@@ -72,7 +67,9 @@ const AuthPage = () => {
         })
       );
 
-      if (
+      if (userRole === "superadmin") {
+        navigate("/ownerdashboard");
+      } else if (
         userRole === "shop admin" ||
         userRole === "shopadmin" ||
         userRole === "shop"

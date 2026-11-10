@@ -3,7 +3,6 @@ import { QRCodeCanvas } from "qrcode.react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
-  QrCode,
   ArrowLeft,
   Building2,
   Store,
@@ -127,7 +126,6 @@ const QRGenerator = () => {
       setSaveSuccessMsg("");
       setSaveErrorMsg("");
 
-      const found = allTargets.find((t) => t.id === targetId);
       const defaultUrl = `${BASE_QR_URL}/${targetId}`;
 
       try {
@@ -154,7 +152,7 @@ const QRGenerator = () => {
         setIsSaved(true);
       }
     },
-    [allTargets, BASE_QR_URL]
+    [BASE_QR_URL]
   );
 
   // Fetch all malls on mount

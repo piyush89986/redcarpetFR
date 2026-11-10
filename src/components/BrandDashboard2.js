@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { Building2, Plus, RefreshCw, ArrowLeft, Store, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Plus, RefreshCw, ArrowLeft, Store, AlertTriangle } from "lucide-react";
 import API_BASE from "../apiConfig";
 
 // Reusable Components

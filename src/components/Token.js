@@ -2,14 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
-  Sparkles,
   Clock,
-  CheckCircle2,
   Bell,
   ArrowRight,
-  ShieldCheck,
-  Store,
-  Ticket
+  Store
 } from "lucide-react";
 import API_BASE from "../apiConfig";
 

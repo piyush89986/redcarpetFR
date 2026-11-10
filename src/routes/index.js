@@ -9,7 +9,6 @@ import Countdown from "../components/Countdown";
 import EditDisplay from "../components/EditDisplay";
 import AuthPage from "../components/AuthPage";
 import OwnerDashboard from "../components/OwnerDashboard";
-import ShopDetail from "../components/ShopDetail";
 import BrandDashboard2 from "../components/BrandDashboard2";
 import Display from "../components/Display";
 import ProtectedRoute from "../components/ProtectedRoute";

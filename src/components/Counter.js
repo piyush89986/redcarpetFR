@@ -10,7 +10,6 @@ import {
   RefreshCw,
   CheckCircle2,
   MessageSquare,
-  AlertTriangle,
   Volume2,
   Radio,
   ShieldAlert,
@@ -84,7 +83,11 @@ const Counter = () => {
 
   useEffect(() => {
     checkCountdown();
-    const interval = setInterval(checkCountdown, 3500);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        checkCountdown();
+      }
+    }, 3500);
     return () => clearInterval(interval);
   }, [checkCountdown]);
 
@@ -117,11 +120,16 @@ const Counter = () => {
     }, 3200);
   }, []);
 
-  // Scoped Access Control (Strictly admin & shop staff, no superadmin)
+  // Scoped Access Control (Admin, SuperAdmin & Shop Staff)
   useEffect(() => {
-    if (!rawRole || !["admin", "shop admin", "shopadmin", "shop"].includes(rawRole)) {
+    if (!rawRole || !["admin", "superadmin", "shop admin", "shopadmin", "shop"].includes(rawRole)) {
       console.warn("Access Denied: Unauthenticated user attempted to access staff counter queue.");
       navigate("/", { replace: true });
+      return;
+    }
+
+    if (rawRole === "superadmin") {
+      // SuperAdmin has full administrative access
       return;
     }
 
@@ -184,7 +192,11 @@ const Counter = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 4000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchData();
+      }
+    }, 4000);
     return () => clearInterval(interval);
   }, [fetchData]);
 

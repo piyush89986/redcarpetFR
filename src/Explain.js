@@ -2,13 +2,11 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import axios from "axios";
 import {
-  Sparkles,
   Zap,
   ShoppingBag,
   Bell,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2,
   MapPin,
   Store,
   Clock

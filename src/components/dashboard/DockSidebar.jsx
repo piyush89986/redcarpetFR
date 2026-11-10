@@ -83,6 +83,7 @@ const DockSidebar = React.memo(({
         .substring(0, 2)
         .toUpperCase();
     }
+    if (storedRole === "superadmin") return "SA";
     if (storedRole === "admin") return "AD";
     return "ST";
   }, [storedUser, storedRole]);

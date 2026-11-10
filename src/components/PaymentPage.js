@@ -7,9 +7,6 @@ import {
   Sparkles,
   ArrowRight,
   ArrowLeft,
-  ShieldCheck,
-  Zap,
-  CheckCircle2,
   Lock
 } from "lucide-react";
 import API_BASE from "../apiConfig";
