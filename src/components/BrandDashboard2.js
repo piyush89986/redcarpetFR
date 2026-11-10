@@ -40,9 +40,7 @@ const BrandDashboard2 = () => {
   const [activeTab, setActiveTab] = useState("All Stores");
 
   // Dock & Scroll Animation State
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
-    return localStorage.getItem("adminSidebarExpanded") === "true";
-  });
+  const [isDockCollapsed, setIsDockCollapsed] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   // Modals State
@@ -393,13 +391,12 @@ const BrandDashboard2 = () => {
 
   return (
     <div
-      className={`min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 transition-all duration-300 ${
-        isSidebarExpanded ? "md:pl-[230px]" : "md:pl-[85px]"
-      } flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]`}
+      className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[85px] lg:pl-[95px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]"
     >
       {/* Reusable Left Floating Dock Sidebar */}
       <DockSidebar
-        onToggleCollapse={(expanded) => setIsSidebarExpanded(expanded)}
+        isCollapsed={isDockCollapsed}
+        onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
         onAddMall={() => {
           setEditingStore(null);
           setIsStoreModalOpen(true);

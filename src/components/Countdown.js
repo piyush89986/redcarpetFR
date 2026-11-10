@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { io } from "socket.io-client";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -67,6 +67,17 @@ const Countdown = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const timerRef = useRef(null);
+  const soundRef = useRef(soundEnabled);
+  soundRef.current = soundEnabled;
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
   // Fetch store and queue details
   const fetchQueueAndStore = useCallback(async () => {
     if (!id) return;
@@ -76,16 +87,20 @@ const Countdown = () => {
       if (queueRes.ok) {
         const tokens = await queueRes.json();
         setQueueList(tokens || []);
-        // If no token selected yet, pick the first active token
-        if (!currentToken && tokens && tokens.length > 0) {
-          const called = tokens.find((t) => t.clicked);
-          const firstWaiting = tokens.find((t) => !t.clicked);
-          const active = called || firstWaiting || tokens[0];
-          if (active) {
-            setCurrentToken(String(active.token || ""));
-            setCurrentGuestName(active.name || "Valued Guest");
+        // If no token selected yet, pick the active token
+        setCurrentToken((prev) => {
+          if (prev) return prev;
+          if (tokens && tokens.length > 0) {
+            const called = tokens.find((t) => t.clicked);
+            const firstWaiting = tokens.find((t) => !t.clicked);
+            const active = called || firstWaiting || tokens[0];
+            if (active) {
+              if (active.name) setCurrentGuestName(active.name);
+              return String(active.token || "");
+            }
           }
-        }
+          return "";
+        });
       }
 
       // 2. Fetch Store / Mall Info
@@ -97,41 +112,55 @@ const Countdown = () => {
     } catch (err) {
       console.error("Error fetching TV queue data:", err);
     }
-  }, [id, currentToken]);
+  }, [id]);
 
-  const startCountdown = useCallback((startTime, duration, tokenNum, guestName, storeTitle) => {
-    if (tokenNum) setCurrentToken(String(tokenNum));
-    if (guestName) setCurrentGuestName(guestName);
-    if (storeTitle && !storeInfo) setStoreInfo((prev) => ({ ...prev, name: storeTitle }));
+  // Robust countdown runner with no flickering or state jumping
+  const startCountdown = useCallback(
+    (startTime, duration, tokenNum, guestName, storeTitle) => {
+      clearTimer();
 
-    setShowMessage(false);
-    const safeDuration = Number(duration) || 180;
-    const endTime = startTime + safeDuration * 1000;
+      if (tokenNum) setCurrentToken(String(tokenNum));
+      if (guestName) setCurrentGuestName(guestName);
+      if (storeTitle) setStoreInfo((prev) => ({ ...prev, name: storeTitle }));
 
-    const remainingNow = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
-    setTimeLeft(remainingNow);
+      const safeDuration = Number(duration) || 180;
+      const endTime = Number(startTime) + safeDuration * 1000;
+      const remainingNow = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
 
-    const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
-      setTimeLeft(remaining);
-
-      const percentageFilled = ((safeDuration - remaining) / safeDuration) * 100;
-      setProgress(percentageFilled);
-
-      if (remaining === 0) {
-        clearInterval(interval);
-        setTimeout(() => setShowMessage(true), 800);
+      // If the window has ALREADY elapsed, immediately show concluded state without 00:00 flickering
+      if (remainingNow <= 0) {
+        setTimeLeft(0);
+        setProgress(100);
+        setShowMessage(true);
+        return;
       }
-    }, 1000);
 
-    return () => clearInterval(interval);
-  }, [storeInfo]);
+      // Active live countdown window
+      setTimeLeft(remainingNow);
+      setProgress(((safeDuration - remainingNow) / safeDuration) * 100);
+      setShowMessage(false);
+
+      timerRef.current = setInterval(() => {
+        const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+        setTimeLeft(remaining);
+
+        const pct = ((safeDuration - remaining) / safeDuration) * 100;
+        setProgress(pct);
+
+        if (remaining <= 0) {
+          clearTimer();
+          setShowMessage(true);
+        }
+      }, 1000);
+    },
+    [clearTimer]
+  );
 
   // Initial Data & WebSocket listeners
   useEffect(() => {
     fetchQueueAndStore();
 
-    // Fetch initial countdown state
+    // Fetch latest active countdown state once
     const countdownUrl = id
       ? `${API_BASE}/api/get-countdown?shopId=${id}`
       : `${API_BASE}/api/get-countdown`;
@@ -140,8 +169,6 @@ const Countdown = () => {
       .then((res) => res.json())
       .then((data) => {
         if (data && data.startTime) {
-          if (data.token) setCurrentToken(String(data.token));
-          if (data.name) setCurrentGuestName(data.name);
           startCountdown(
             data.startTime,
             data.duration || 180,
@@ -158,9 +185,9 @@ const Countdown = () => {
       socket = io(API_BASE, { transports: ["websocket", "polling"] });
     }
 
-    socket.on("countdown-start", (payload) => {
+    const handleCountdownStart = (payload) => {
       if (!id || !payload.shopId || String(payload.shopId) === String(id)) {
-        if (soundEnabled) playChime();
+        if (soundRef.current) playChime();
         startCountdown(
           payload.startTime,
           payload.duration || 180,
@@ -170,12 +197,25 @@ const Countdown = () => {
         );
         fetchQueueAndStore();
       }
-    });
+    };
+
+    const handleNewToken = (payload) => {
+      if (!id || !payload.shopId || String(payload.shopId) === String(id)) {
+        fetchQueueAndStore();
+      }
+    };
+
+    socket.on("countdown-start", handleCountdownStart);
+    socket.on("new-queue-token", handleNewToken);
 
     return () => {
-      if (socket) socket.off("countdown-start");
+      clearTimer();
+      if (socket) {
+        socket.off("countdown-start", handleCountdownStart);
+        socket.off("new-queue-token", handleNewToken);
+      }
     };
-  }, [id, soundEnabled, fetchQueueAndStore, startCountdown]);
+  }, [id, fetchQueueAndStore, startCountdown, clearTimer]);
 
   // Fullscreen toggle handler
   const toggleFullscreen = () => {
@@ -185,8 +225,8 @@ const Countdown = () => {
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
-        setIsFullscreen(false);
       }
+      setIsFullscreen(false);
     }
   };
 
@@ -289,9 +329,9 @@ const Countdown = () => {
           </p>
         </div>
 
-        {/* Circular Countdown Window */}
+        {/* Circular Countdown Window or Concluded State */}
         {!showMessage ? (
-          <div className="mt-6 sm:mt-8 flex flex-col items-center">
+          <div className="mt-6 sm:mt-8 flex flex-col items-center animate-in fade-in duration-200">
             <div
               className="relative w-44 h-44 sm:w-52 sm:h-52 rounded-full p-2.5 transition-all duration-1000 shadow-[0_0_45px_rgba(229,252,115,0.18)]"
               style={{
@@ -309,7 +349,7 @@ const Countdown = () => {
             </div>
           </div>
         ) : (
-          <div className="mt-6 py-6 px-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md">
+          <div className="mt-6 py-6 px-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md animate-in fade-in duration-200">
             <CheckCircle2 size={48} className="text-[#e5fc73] mx-auto mb-2" />
             <h3 className="text-lg font-bold text-white m-0">Dispatch Window Concluded</h3>
             <p className="text-xs text-gray-400 mt-1 m-0">Next guest token will be announced shortly</p>

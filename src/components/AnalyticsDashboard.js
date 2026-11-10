@@ -43,9 +43,7 @@ export default function AnalyticsDashboard() {
   const [activeTab, setActiveTab] = useState("Store Counters");
 
   // Layout & Modal states
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
-    return localStorage.getItem("adminSidebarExpanded") === "true";
-  });
+  const [isDockCollapsed, setIsDockCollapsed] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -196,9 +194,7 @@ export default function AnalyticsDashboard() {
 
   return (
     <div
-      className={`min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 transition-all duration-300 ${
-        isSidebarExpanded ? "md:pl-[230px]" : "md:pl-[85px]"
-      } flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]`}
+      className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[85px] lg:pl-[95px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]"
     >
       {/* Toast Notification */}
       <Toast message={toastMessage} isVisible={!!toastMessage} />
@@ -220,7 +216,8 @@ export default function AnalyticsDashboard() {
 
       {/* Reusable Left Floating Dock Navigation */}
       <DockSidebar
-        onToggleCollapse={(expanded) => setIsSidebarExpanded(expanded)}
+        isCollapsed={isDockCollapsed}
+        onToggleCollapse={() => setIsDockCollapsed((prev) => !prev)}
         activeItem="analytics"
         onNavigateHome={() => navigate(effectiveShopId ? `/branddashboard2/${effectiveShopId}` : "/statistics")}
         onNavigateQrStudio={() => navigate(effectiveShopId ? `/qrcode?mallId=${effectiveShopId}` : "/qrcode")}
