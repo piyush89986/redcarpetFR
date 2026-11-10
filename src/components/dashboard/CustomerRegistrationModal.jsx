@@ -31,16 +31,10 @@ const CustomerRegistrationModal = React.memo(({
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
       setFormData(initialForm);
       setError("");
       setIssuedToken(null);
-    } else {
-      document.body.style.overflow = "unset";
     }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
   }, [isOpen]);
 
   if (!isOpen) return null;

@@ -15,7 +15,8 @@ import {
   Radio,
   ShieldAlert,
   LogOut,
-  UserPlus
+  UserPlus,
+  RotateCcw
 } from "lucide-react";
 import API_BASE from "../apiConfig";
 import { useAppDispatch, setQueueData as setReduxQueueData, setShopInfo as setReduxShopInfo } from "../redux";
@@ -29,7 +30,7 @@ import HelpModal from "./dashboard/HelpModal";
 import Toast from "./dashboard/Toast";
 import CustomerRegistrationModal from "./dashboard/CustomerRegistrationModal";
 
-const QUEUE_TABS = ["All Guests", "Waiting in Line", "Called & Served"];
+const QUEUE_TABS = ["Waiting in Line", "Called & Served", "All Guests"];
 
 const Counter = () => {
   const { id } = useParams();
@@ -40,7 +41,7 @@ const Counter = () => {
   const [shopInfo, setShopInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("All Guests");
+  const [activeTab, setActiveTab] = useState("Waiting in Line");
 
   // Layout & Dock states
   const [isDockCollapsed, setIsDockCollapsed] = useState(false);
@@ -87,18 +88,26 @@ const Counter = () => {
     return () => clearInterval(interval);
   }, [checkCountdown]);
 
-  // Scroll listener for collapsible header
+  // Scroll listener for sticky navigation styling
   useEffect(() => {
+    // Reset any stuck overflow from modals
+    document.body.style.overflow = "";
+    document.documentElement.style.overflow = "";
+
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      if (currentScrollY > 40) {
+      if (currentScrollY > 30) {
         setIsScrolled(true);
-      } else if (currentScrollY < 15) {
+      } else if (currentScrollY < 10) {
         setIsScrolled(false);
       }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   const showToast = useCallback((msg) => {
@@ -151,13 +160,18 @@ const Counter = () => {
       const response = await axios.get(`${API_BASE}/api/get-data/${id}`);
       let fetchedData = response.data || [];
 
-      const savedClickedState =
-        JSON.parse(localStorage.getItem("clickedState")) || {};
-
-      fetchedData = fetchedData.map((item) => ({
-        ...item,
-        clicked: savedClickedState[item._id] || false,
-      }));
+      // Normalize items and compute served state from PostgreSQL database (status === "served" or clicked === true)
+      fetchedData = fetchedData.map((item) => {
+        const itemId = String(item.id || item._id || item.token);
+        const isServed = Boolean(item.clicked || item.status === "served");
+        return {
+          ...item,
+          id: itemId,
+          _id: itemId,
+          clicked: isServed,
+          status: isServed ? "served" : (item.status || "waiting"),
+        };
+      });
 
       setData(fetchedData);
       dispatch(setReduxQueueData(fetchedData));
@@ -170,7 +184,7 @@ const Counter = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 5000);
+    const interval = setInterval(fetchData, 4000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -235,20 +249,58 @@ const Counter = () => {
     }
   };
 
-  // Mark token as served and completed
-  const handleMarkServed = (item) => {
-    const savedClickedState =
-      JSON.parse(localStorage.getItem("clickedState")) || {};
-    savedClickedState[item._id] = true;
-    localStorage.setItem("clickedState", JSON.stringify(savedClickedState));
+  // Mark token as served and completed (ONLY affects this specific customer, persists to DB)
+  const handleMarkServed = async (item) => {
+    const targetId = String(item.id || item._id || item.token);
 
+    // Optimistic UI update: ONLY update the targeted token!
     setData((prev) =>
-      prev.map((d) => (d._id === item._id ? { ...d, clicked: true } : d))
+      prev.map((d) => {
+        const dId = String(d.id || d._id || d.token);
+        return dId === targetId ? { ...d, clicked: true, status: "served" } : d;
+      })
     );
+
     if (activeCountdown?.token === String(item.token)) {
       setActiveCountdown(null);
     }
     showToast(`Token #${item.token} marked as served`);
+
+    // Persist permanently in PostgreSQL database
+    try {
+      await axios.post(`${API_BASE}/api/mark-served`, {
+        tokenId: item.id || item._id,
+        shopId: id,
+        token: item.token,
+      });
+    } catch (err) {
+      console.error("Error persisting served status to database:", err);
+    }
+  };
+
+  // Re-open / unmark served token (returns to waiting line)
+  const handleUnmarkServed = async (item) => {
+    const targetId = String(item.id || item._id || item.token);
+
+    // Optimistic UI update: ONLY update the targeted token!
+    setData((prev) =>
+      prev.map((d) => {
+        const dId = String(d.id || d._id || d.token);
+        return dId === targetId ? { ...d, clicked: false, status: "waiting" } : d;
+      })
+    );
+
+    showToast(`Token #${item.token} returned to waiting line`);
+
+    try {
+      await axios.post(`${API_BASE}/api/unmark-served`, {
+        tokenId: item.id || item._id,
+        shopId: id,
+        token: item.token,
+      });
+    } catch (err) {
+      console.error("Error unmarking token:", err);
+    }
   };
 
   // Send SMS Message
@@ -277,12 +329,13 @@ const Counter = () => {
     }
   };
 
-  // Manual SMS Trigger
+  // Manual SMS Trigger (Alerts ONLY this customer)
   const handleSendManualAlert = async (customer) => {
     if (!customer?.mobile) {
       showToast("No mobile number provided for this guest.");
       return;
     }
+    const customerId = String(customer.id || customer._id || customer.token);
     await handleSendMessage({
       number: customer.mobile,
       name: customer.name,
@@ -290,14 +343,15 @@ const Counter = () => {
       createdAt: customer.createdAt,
       alertType: "approaching",
     });
-    const updatedAlertMap = { ...smsAlertedMap, [customer._id]: true };
-    setSmsAlertedMap(updatedAlertMap);
-    localStorage.setItem("smsAlertedMap", JSON.stringify(updatedAlertMap));
+    setSmsAlertedMap((prev) => ({
+      ...prev,
+      [customerId]: true,
+    }));
     showToast(`SMS alert sent to ${customer.name || "guest"} (${customer.mobile})`);
   };
 
   const nextWaitingGuest = useMemo(() => {
-    return data.find((d) => !d.clicked);
+    return data.find((d) => !d.clicked && d.status !== "served");
   }, [data]);
 
   // Filtered queue
@@ -312,20 +366,27 @@ const Counter = () => {
         if (!matches) return false;
       }
 
-      if (activeTab === "Waiting in Line") return !item.clicked;
-      if (activeTab === "Called & Served") return item.clicked;
+      const isServed = Boolean(item.clicked || item.status === "served");
+      if (activeTab === "Waiting in Line") return !isServed;
+      if (activeTab === "Called & Served") return isServed;
       return true; // "All Guests"
     });
   }, [data, search, activeTab]);
 
-  const waitingCount = useMemo(() => data.filter((d) => !d.clicked).length, [data]);
-  const calledCount = useMemo(() => data.filter((d) => d.clicked).length, [data]);
+  const waitingCount = useMemo(
+    () => data.filter((d) => !d.clicked && d.status !== "served").length,
+    [data]
+  );
+  const calledCount = useMemo(
+    () => data.filter((d) => d.clicked || d.status === "served").length,
+    [data]
+  );
 
   const queueCounts = useMemo(() => {
     return {
-      "All Guests": data.length,
       "Waiting in Line": waitingCount,
       "Called & Served": calledCount,
+      "All Guests": data.length,
     };
   }, [data, waitingCount, calledCount]);
 
@@ -401,7 +462,7 @@ const Counter = () => {
 
   return (
     <div
-      className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[85px] lg:pl-[95px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]"
+      className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pb-28 sm:pb-36 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[85px] lg:pl-[95px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]"
     >
       {/* Floating Left Dock Sidebar */}
       <DockSidebar
@@ -430,14 +491,8 @@ const Counter = () => {
 
       {/* Main Full-Screen Canvas */}
       <main className="flex-1 flex flex-col gap-5 sm:gap-6 min-w-0 w-full">
-        {/* Luxury Collapsible Header with REDCARPET Backdrop Watermark */}
-        <header
-          className={`relative overflow-hidden transition-all duration-300 ease-in-out ${
-            isScrolled
-              ? "max-h-0 opacity-0 -translate-y-4 pointer-events-none mb-0 py-0"
-              : "max-h-56 opacity-100 translate-y-0 mb-1 pt-1 pb-1"
-          }`}
-        >
+        {/* Header with REDCARPET Backdrop Watermark */}
+        <header className="relative mb-1 pt-1 pb-1">
           {/* Backdrop Watermark */}
           <div
             aria-hidden="true"
@@ -476,53 +531,83 @@ const Counter = () => {
           </p>
         </header>
 
-        {/* Dynamic TV Screen Live Calling Banner */}
-        {activeCountdown && (
-          <div className="p-4 rounded-2xl bg-[#0e1015] border border-[#232730] text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#e5fc73]/15 border border-[#e5fc73]/40 flex items-center justify-center text-[#e5fc73] shrink-0 animate-pulse">
-                <Radio size={20} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-red-600 text-white tracking-wider animate-pulse">
-                    LIVE ON TV SCREEN
-                  </span>
-                  <span className="text-xs text-gray-400 font-mono">
-                    {shopInfo?.title || shopInfo?.name || "Counter"}
-                  </span>
-                </div>
-                <div className="text-sm sm:text-base font-extrabold text-white mt-0.5 flex items-center gap-2">
-                  <span className="text-[#e5fc73] font-mono text-base">Token #{activeCountdown.token}</span>
-                  <span>•</span>
-                  <span className="text-gray-200">{activeCountdown.name || "Customer"}</span>
-                </div>
-              </div>
+        {/* Persistent TV Screen Broadcast Card (Stable height to prevent layout shift) */}
+        <div
+          className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md transition-all duration-300 ${
+            activeCountdown
+              ? "bg-[#0e1015] border-[#232730] text-white"
+              : "bg-[#14171d] border-[#252830] text-gray-200"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
+                activeCountdown
+                  ? "bg-[#e5fc73]/15 border-[#e5fc73]/40 text-[#e5fc73] animate-pulse"
+                  : "bg-white/5 border-white/10 text-gray-400"
+              }`}
+            >
+              <Radio size={20} />
             </div>
-
-            <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
-              <button
-                type="button"
-                onClick={() => window.open(`/${id}/countdown`, "_blank")}
-                className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#1d212a] hover:bg-[#272c38] text-gray-200 inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
-              >
-                <Tv size={13} />
-                <span>Open TV Tab</span>
-              </button>
-
-              {nextWaitingGuest && (
-                <button
-                  type="button"
-                  onClick={() => handleCallToken(nextWaitingGuest)}
-                  className="px-4 py-1.5 rounded-full text-xs font-black bg-[#e5fc73] hover:bg-[#d8ee65] text-gray-950 inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95"
+            <div>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider ${
+                    activeCountdown
+                      ? "bg-red-600 text-white animate-pulse"
+                      : "bg-gray-800 text-gray-400"
+                  }`}
                 >
-                  <Volume2 size={13} strokeWidth={2.5} />
-                  <span>Call Next (#{nextWaitingGuest.token})</span>
-                </button>
-              )}
+                  {activeCountdown ? "LIVE ON TV SCREEN" : "TV SCREEN STANDBY"}
+                </span>
+                <span className="text-xs text-gray-400 font-mono">
+                  {shopInfo?.title || shopInfo?.name || "Counter"}
+                </span>
+              </div>
+              <div className="text-sm sm:text-base font-extrabold text-white mt-0.5 flex items-center gap-2">
+                {activeCountdown ? (
+                  <>
+                    <span className="text-[#e5fc73] font-mono text-base">
+                      Token #{activeCountdown.token}
+                    </span>
+                    <span>•</span>
+                    <span className="text-gray-200">
+                      {activeCountdown.name || "Customer"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-gray-400 font-medium text-xs sm:text-sm">
+                    {nextWaitingGuest
+                      ? `Ready to call Token #${nextWaitingGuest.token} (${nextWaitingGuest.name || "Walk-in Guest"})`
+                      : "No customers waiting in line"}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => window.open(`/${id}/countdown`, "_blank")}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#1d212a] hover:bg-[#272c38] text-gray-200 inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+            >
+              <Tv size={13} />
+              <span>Open TV Tab</span>
+            </button>
+
+            {nextWaitingGuest && (
+              <button
+                type="button"
+                onClick={() => handleCallToken(nextWaitingGuest)}
+                className="px-4 py-1.5 rounded-full text-xs font-black bg-[#e5fc73] hover:bg-[#d8ee65] text-gray-950 inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95"
+              >
+                <Volume2 size={13} strokeWidth={2.5} />
+                <span>Call Next (#{nextWaitingGuest.token})</span>
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Dynamic SMS Notification Banner */}
         {lastSmsAlert && (
@@ -666,36 +751,46 @@ const Counter = () => {
                     <th className="py-3 px-4">Customer Name</th>
                     <th className="py-3 px-4">Mobile Contact</th>
                     <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4 text-right w-[280px] min-w-[280px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-xs">
                   {filteredQueue.map((item, index) => {
-                    const isAlerted = !!smsAlertedMap[item._id];
+                    const itemId = String(item.id || item._id || item.token || index);
+                    const isAlerted = Boolean(smsAlertedMap[itemId]);
                     const isOnTv = activeCountdown?.token === String(item.token);
+                    const isServed = Boolean(item.clicked || item.status === "served");
 
                     return (
                       <tr
-                        key={item._id || index}
-                        className={`transition-colors ${isOnTv ? "bg-[#e5fc73]/10" : "hover:bg-[#fafbfb]"}`}
+                        key={itemId}
+                        className={`transition-colors ${
+                          isOnTv ? "bg-[#e5fc73]/10" : isServed ? "bg-gray-50/50 hover:bg-gray-50" : "hover:bg-[#fafbfb]"
+                        }`}
                       >
                         <td className="py-3 px-4 font-semibold text-gray-400">
                           {index + 1}
                         </td>
 
                         <td className="py-3 px-4 font-bold text-gray-900">
-                          <span className={`inline-block px-2.5 py-1 rounded-lg font-mono text-xs font-black ${
-                            isOnTv
-                              ? "bg-[#e5fc73] text-gray-950 border border-black/20 shadow-xs"
-                              : "bg-[#e5fc73]/40 border border-[#e5fc73] text-gray-950"
-                          }`}>
+                          <span
+                            className={`inline-block px-2.5 py-1 rounded-lg font-mono text-xs font-black ${
+                              isOnTv
+                                ? "bg-[#e5fc73] text-gray-950 border border-black/20 shadow-xs"
+                                : isServed
+                                ? "bg-gray-200 text-gray-700 border border-gray-300"
+                                : "bg-[#e5fc73]/40 border border-[#e5fc73] text-gray-950"
+                            }`}
+                          >
                             #{item.token || String(index + 1)}
                           </span>
                         </td>
 
                         <td className="py-3 px-4 font-bold text-gray-900">
                           <div className="flex items-center gap-1.5">
-                            <span>{item.name || "Walk-in Guest"}</span>
+                            <span className={isServed ? "line-through text-gray-500 font-medium" : ""}>
+                              {item.name || "Walk-in Guest"}
+                            </span>
                             {isOnTv && (
                               <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" title="Currently on TV" />
                             )}
@@ -707,9 +802,9 @@ const Counter = () => {
                         </td>
 
                         <td className="py-3 px-4">
-                          {item.clicked ? (
+                          {isServed ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-bold text-[11px]">
-                              <CheckCircle2 size={12} className="text-gray-500" />
+                              <CheckCircle2 size={12} className="text-emerald-600" />
                               Served
                             </span>
                           ) : isOnTv ? (
@@ -730,48 +825,64 @@ const Counter = () => {
                           )}
                         </td>
 
-                        <td className="py-3 px-4 text-right">
-                          <div className="inline-flex items-center gap-1.5 justify-end flex-wrap">
-                            {/* Call to TV Screen */}
-                            {!item.clicked && (
+                        <td className="py-3 px-4 text-right w-[280px] min-w-[280px]">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Slot 1: TV Broadcast Button (Fixed 96px width) */}
+                            <div className="w-[96px] flex justify-end shrink-0">
+                              {!isServed && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCallToken(item)}
+                                  title="Broadcast this token live onto the TV countdown screen"
+                                  className={`w-full justify-center inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                                    isOnTv
+                                      ? "bg-[#e5fc73] text-gray-950 border border-black/10 font-black"
+                                      : "bg-gray-900 hover:bg-black text-white hover:shadow-xs active:scale-95"
+                                  }`}
+                                >
+                                  <Volume2 size={12} strokeWidth={2.4} />
+                                  <span>{isOnTv ? "Re-Call" : "Call on TV"}</span>
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Slot 2: Serve / Re-open Button (Fixed 76px width) */}
+                            <div className="w-[76px] flex justify-end shrink-0">
+                              {!isServed ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkServed(item)}
+                                  title="Mark guest as served and completed"
+                                  className="w-full justify-center inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer active:scale-95 shadow-2xs"
+                                >
+                                  <CheckCircle2 size={12} />
+                                  <span>Serve</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnmarkServed(item)}
+                                  title="Return guest to waiting line"
+                                  className="w-full justify-center inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-colors cursor-pointer active:scale-95"
+                                >
+                                  <RotateCcw size={12} />
+                                  <span>Re-open</span>
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Slot 3: SMS Button (Fixed 76px width) */}
+                            <div className="w-[76px] flex justify-end shrink-0">
                               <button
                                 type="button"
-                                onClick={() => handleCallToken(item)}
-                                title="Broadcast this token live onto the TV countdown screen"
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer shadow-2xs ${
-                                  isOnTv
-                                    ? "bg-[#e5fc73] text-gray-950 border border-black/10 font-black"
-                                    : "bg-gray-900 hover:bg-black text-white hover:shadow-xs"
-                                }`}
+                                onClick={() => handleSendManualAlert(item)}
+                                title="Send template SMS alert to customer"
+                                className="w-full justify-center inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer shadow-2xs active:scale-95"
                               >
-                                <Volume2 size={12} strokeWidth={2.4} />
-                                <span>{isOnTv ? "Re-Call TV" : "Call on TV"}</span>
+                                <MessageSquare size={12} />
+                                <span>{isAlerted ? "Re-alert" : "SMS"}</span>
                               </button>
-                            )}
-
-                            {/* Mark Served */}
-                            {!item.clicked && (
-                              <button
-                                type="button"
-                                onClick={() => handleMarkServed(item)}
-                                title="Mark guest as served and completed"
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
-                              >
-                                <CheckCircle2 size={12} />
-                                <span>Serve</span>
-                              </button>
-                            )}
-
-                            {/* Send SMS Alert */}
-                            <button
-                              type="button"
-                              onClick={() => handleSendManualAlert(item)}
-                              title="Send template SMS alert to customer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer shadow-2xs"
-                            >
-                              <MessageSquare size={12} />
-                              <span>{isAlerted ? "Re-alert" : "SMS"}</span>
-                            </button>
+                            </div>
                           </div>
                         </td>
                       </tr>

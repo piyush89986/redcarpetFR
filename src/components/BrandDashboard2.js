@@ -391,7 +391,7 @@ const BrandDashboard2 = () => {
 
   return (
     <div
-      className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[85px] lg:pl-[95px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]"
+      className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pb-24 sm:pb-32 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[85px] lg:pl-[95px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]"
     >
       {/* Reusable Left Floating Dock Sidebar */}
       <DockSidebar
@@ -415,14 +415,8 @@ const BrandDashboard2 = () => {
 
       {/* Main Full-Screen Content Canvas */}
       <main className="flex-1 flex flex-col gap-5 sm:gap-6 min-w-0 w-full">
-        {/* Luxury Collapsible Header with REDCARPET Backdrop Watermark */}
-        <header
-          className={`relative overflow-hidden transition-all duration-300 ease-in-out ${
-            isScrolled
-              ? "max-h-0 opacity-0 -translate-y-4 pointer-events-none mb-0 py-0"
-              : "max-h-56 opacity-100 translate-y-0 mb-1 pt-1 pb-1"
-          }`}
-        >
+        {/* Header with REDCARPET Backdrop Watermark */}
+        <header className="relative mb-1 pt-1 pb-1">
           {/* Luxury Backdrop Watermark */}
           <div
             aria-hidden="true"

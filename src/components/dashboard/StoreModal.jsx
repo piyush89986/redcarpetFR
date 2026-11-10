@@ -40,16 +40,6 @@ const StoreModal = React.memo(({ isOpen, initialData = null, onClose, onSubmit, 
     setShowConfirmPassword(false);
   }, [initialData, isOpen]);
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 

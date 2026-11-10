@@ -194,7 +194,7 @@ export default function AnalyticsDashboard() {
 
   return (
     <div
-      className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[85px] lg:pl-[95px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]"
+      className="min-h-screen bg-white w-full py-4 sm:py-6 lg:py-7 pb-24 sm:pb-32 pr-4 sm:pr-6 lg:pr-8 pl-4 pt-16 md:pt-5 md:pl-[85px] lg:pl-[95px] flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-[#141619] box-border selection:bg-[#e5fc73] selection:text-[#111]"
     >
       {/* Toast Notification */}
       <Toast message={toastMessage} isVisible={!!toastMessage} />
@@ -234,14 +234,8 @@ export default function AnalyticsDashboard() {
 
       {/* Main Full-Screen Canvas */}
       <main className="flex-1 flex flex-col gap-5 sm:gap-6 min-w-0 w-full">
-        {/* Luxury Header Area with REDCARPET Watermark (Collapses smoothly on scroll) */}
-        <header
-          className={`relative overflow-hidden transition-all duration-300 ease-in-out ${
-            isScrolled
-              ? "max-h-0 opacity-0 -translate-y-4 pointer-events-none mb-0 py-0"
-              : "max-h-56 opacity-100 translate-y-0 mb-1 pt-1 pb-1"
-          }`}
-        >
+        {/* Header Area with REDCARPET Watermark */}
+        <header className="relative mb-1 pt-1 pb-1">
           {/* Luxury REDCARPET Backdrop Branding Watermark */}
           <div
             aria-hidden="true"
