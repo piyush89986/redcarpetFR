@@ -84,7 +84,9 @@ const AuthPage = () => {
       setErrorMessage(
         error.response?.data?.error ||
           error.response?.data?.message ||
-          "Invalid email or password. Please verify your credentials."
+          (error.code === "ERR_NETWORK" || !error.response
+            ? "Cannot connect to RedCarpet backend. Please ensure the server is running on port 5001."
+            : "Invalid email or password. Please verify your credentials.")
       );
     } finally {
       setLoading(false);

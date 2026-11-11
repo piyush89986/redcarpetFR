@@ -17,7 +17,7 @@ const getApiBaseUrl = () => {
       window.location.hostname.startsWith("192.168.");
 
     if (isLocalhost) {
-      return "http://localhost:5000";
+      return "http://localhost:5001";
     }
   }
 
